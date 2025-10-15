@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TickerOneStock 配置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page__header">
+        <h1>TickerOneStock 设置</h1>
+        <p class="page__subtitle">配置要跟踪的标的与显示样式，保存后后台会自动重新拉取行情。</p>
+      </header>
+      <form id="options-form" class="card">
+        <section class="field">
+          <label for="symbol">股票代码</label>
+          <input id="symbol" name="symbol" placeholder="例如：sh000300" required />
+          <p class="field__hint">请使用数据源要求的格式，如沪市 `sh` 前缀、深市 `sz` 前缀。</p>
+        </section>
+        <section class="field">
+          <label for="refreshInterval">刷新间隔（秒）</label>
+          <input id="refreshInterval" name="refreshInterval" type="number" min="3" step="1" required />
+          <p class="field__hint">建议值 ≥ 3 秒，避免频繁请求。</p>
+        </section>
+        <section class="field">
+          <label for="quoteProvider">行情源</label>
+          <select id="quoteProvider" name="quoteProvider">
+            <option value="tencent">腾讯行情</option>
+            <option value="sina">新浪行情</option>
+          </select>
+        </section>
+        <section class="field">
+          <label for="displayMode">显示内容</label>
+          <select id="displayMode" name="displayMode">
+            <option value="both">价格 + 涨跌幅</option>
+            <option value="price">仅价格</option>
+            <option value="change">仅涨跌幅</option>
+          </select>
+        </section>
+        <section class="field field--inline">
+          <div>
+            <label for="bubbleWidth">气泡宽度（px）</label>
+            <input id="bubbleWidth" name="bubbleWidth" type="number" min="160" max="480" step="10" />
+          </div>
+          <div>
+            <label for="bubbleHeight">气泡高度（px）</label>
+            <input id="bubbleHeight" name="bubbleHeight" type="number" min="80" max="400" step="10" />
+          </div>
+        </section>
+        <section class="field">
+          <label for="bubbleOpacity">气泡透明度</label>
+          <input id="bubbleOpacity" name="bubbleOpacity" type="range" min="0.4" max="1" step="0.05" />
+          <output id="opacityValue">0.95</output>
+        </section>
+        <section class="field">
+          <label for="theme">主题</label>
+          <select id="theme" name="theme">
+            <option value="auto">跟随系统</option>
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+          </select>
+        </section>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">保存配置</button>
+          <button type="button" id="reset-bubble" class="btn">重置气泡位置</button>
+        </div>
+        <p id="status" role="status" class="status" aria-live="polite"></p>
+      </form>
+      <footer class="page__footer">
+        <p>提示：配置保存在 <code>chrome.storage.sync</code> 中，会在你的 Chrome 登录设备之间同步。</p>
+      </footer>
+    </main>
+    <script src="options.js" type="module"></script>
+  </body>
+</html>
