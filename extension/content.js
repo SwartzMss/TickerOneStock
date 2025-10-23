@@ -338,6 +338,12 @@ function handleQuoteUpdate(message) {
 function attachMessageListener() {
   chrome.runtime.onMessage.addListener((message) => {
     handleQuoteUpdate(message);
+    if (message && message.type === 'SET_ENABLED') {
+      const enabled = !!message.payload?.enabled;
+      bubbleState.hidden = !enabled;
+      applyHiddenState();
+      persistBubbleState({ hidden: bubbleState.hidden });
+    }
   });
 }
 
@@ -404,6 +410,11 @@ async function bootstrap() {
   createBubble();
   if (quote) {
     updateQuoteDisplay();
+  }
+  // 根据后台开关，控制是否显示
+  if (typeof initial?.enabled === 'boolean') {
+    bubbleState.hidden = !initial.enabled;
+    applyHiddenState();
   }
 
   if (!prefersDarkMedia) {

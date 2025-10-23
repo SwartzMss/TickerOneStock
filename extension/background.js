@@ -18,7 +18,7 @@ const DEFAULT_BUBBLE_STATE = {
 let currentConfig = { ...DEFAULT_CONFIG };
 let pollTimerId = null;
 let lastQuote = null;
-let lastDirection = 'flat';
+let enabled = true; // 控制是否在页面显示气泡
 
 function storageGet(area, keys) {
   return new Promise((resolve) => {
@@ -45,8 +45,15 @@ async function ensureDefaults() {
   }
 
   const localData = await storageGet('local', ['bubbleState']);
+  const localUpdates = {};
   if (typeof localData.bubbleState === 'undefined') {
-    await storageSet('local', { bubbleState: { ...DEFAULT_BUBBLE_STATE } });
+    localUpdates.bubbleState = { ...DEFAULT_BUBBLE_STATE };
+  }
+  if (typeof localData.enabled === 'undefined') {
+    localUpdates.enabled = true;
+  }
+  if (Object.keys(localUpdates).length) {
+    await storageSet('local', localUpdates);
   }
 }
 
@@ -62,10 +69,9 @@ async function saveLastQuote(quote) {
   await storageSet('local', { lastQuote: quote });
 }
 
-function colorForDirection(direction) {
-  if (direction === 'up') return '#ef4444';
-  if (direction === 'down') return '#22c55e';
-  return '#64748b';
+function colorForEnabled(isEnabled) {
+  // 启用=红色，停用=绿色
+  return isEnabled ? '#ef4444' : '#22c55e';
 }
 
 function makeCircleImageData(size, color) {
@@ -81,9 +87,9 @@ function makeCircleImageData(size, color) {
   return ctx.getImageData(0, 0, size, size);
 }
 
-async function updateActionIcon(direction = 'flat') {
+async function updateActionIcon(isEnabled = true) {
   try {
-    const color = colorForDirection(direction);
+    const color = colorForEnabled(isEnabled);
     const sizes = [16, 32, 48, 128];
     const imageData = {};
     for (const s of sizes) {
@@ -219,10 +225,6 @@ async function fetchAndBroadcast() {
     quote.updatedAt = Date.now();
     await saveLastQuote(quote);
     await broadcastQuote(quote);
-    if (quote.direction) {
-      lastDirection = quote.direction;
-      updateActionIcon(lastDirection);
-    }
   } catch (error) {
     console.error('获取行情失败', error);
   }
@@ -245,14 +247,12 @@ function startPolling() {
 async function init() {
   await ensureDefaults();
   await loadConfig();
-  const local = await storageGet('local', ['lastQuote']);
+  const local = await storageGet('local', ['lastQuote', 'enabled']);
   if (local.lastQuote) {
     lastQuote = local.lastQuote;
-    if (lastQuote.direction) {
-      lastDirection = lastQuote.direction;
-    }
   }
-  updateActionIcon(lastDirection);
+  enabled = typeof local.enabled === 'boolean' ? local.enabled : true;
+  updateActionIcon(enabled);
   startPolling();
 }
 
@@ -286,7 +286,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_INITIAL_STATE') {
     sendResponse({
       config: currentConfig,
-      quote: lastQuote
+      quote: lastQuote,
+      enabled
     });
     return false;
   }
@@ -298,6 +299,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchAndBroadcast().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;
   }
+});
+
+chrome.action.onClicked.addListener(async () => {
+  try {
+    enabled = !enabled;
+    await storageSet('local', { enabled });
+    updateActionIcon(enabled);
+    // 广播到所有标签页，切换可见性
+    const tabs = await chrome.tabs.query({});
+    await Promise.all(
+      tabs
+        .filter((tab) => typeof tab.id === 'number')
+        .map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'SET_ENABLED', payload: { enabled } }).catch(() => {}))
+    );
+  } catch (_) {}
 });
 
 init();
