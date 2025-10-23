@@ -259,7 +259,7 @@ async function fetchQuote() {
     return q;
   } catch (e1) {
     try {
-      if (DEBUG) console.debug('[bg] fetchQuote fallback', fallback, 'err1=', e1?.message || e1);
+      if (DEBUG) console.log('[bg] fetchQuote fallback', fallback, 'err1=', e1?.message || e1);
       const q2 = await fetchFromProvider(fallback);
       if (q2 && q2.provider) {
         lastSuccessfulProvider = q2.provider;
@@ -267,7 +267,7 @@ async function fetchQuote() {
       }
       return q2;
     } catch (e2) {
-      if (DEBUG) console.debug('[bg] fetchQuote both failed', e1, e2);
+      if (DEBUG) console.log('[bg] fetchQuote both failed', e1, e2);
       // 都失败则抛出组合错误信息，便于排查
       throw new Error(`${e1?.message || e1} | ${e2?.message || e2}`);
     }

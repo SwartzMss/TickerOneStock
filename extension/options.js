@@ -36,9 +36,10 @@ function showStatus(message, type = 'success') {
 }
 
 async function loadConfig() {
-  const syncValues = await storageGet('sync', Object.keys(DEFAULT_CONFIG));
+  const keys = [...Object.keys(DEFAULT_CONFIG), 'symbolName'];
+  const syncValues = await storageGet('sync', keys);
   const config = { ...DEFAULT_CONFIG, ...syncValues };
-  if (DEBUG) console.debug('[options] loadConfig syncValues=', syncValues);
+  if (DEBUG) console.log('[options] loadConfig syncValues=', syncValues);
 
   if (config.symbol && /^(sh|sz)\d{6}$/i.test(config.symbol) && syncValues.symbolName) {
     form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
@@ -60,7 +61,7 @@ function parseCombinedSymbol(input) {
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
   const parsed = parseCombinedSymbol(form.symbol.value);
-  if (DEBUG) console.debug('[options] serializeForm parsed=', parsed);
+  if (DEBUG) console.log('[options] serializeForm parsed=', parsed);
   return {
     symbol: parsed.symbol,
     symbolName: parsed.name,
@@ -79,10 +80,10 @@ async function handleSubmit(event) {
   try {
     const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
     form.symbol.value = resolvedName ? `${resolvedName}  ${normalized}` : normalized;
-    if (DEBUG) console.debug('[options] normalized before save =', { normalized, resolvedName });
+    if (DEBUG) console.log('[options] normalized before save =', { normalized, resolvedName });
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
-    if (DEBUG) console.debug('[options] normalize failed', e);
+    if (DEBUG) console.log('[options] normalize failed', e);
     return;
   }
   const config = serializeForm();
@@ -202,8 +203,10 @@ searchResults?.addEventListener('click', (e) => {
   const nm = item.getAttribute('data-name') || '';
   if (sym) {
     form.symbol.value = nm ? `${nm}  ${sym}` : sym;
-    selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
-    if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+    if (selectedSummary) {
+      selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
+      if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+    }
     showStatus(`已选择 ${nm || sym}`);
   }
   searchResults.style.display = 'none';
@@ -221,8 +224,10 @@ form.symbol.addEventListener('keydown', (e) => {
         if (sym) {
           form.symbol.value = nm ? `${nm}  ${sym}` : sym;
           searchResults.style.display = 'none';
-          selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
-          if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+          if (selectedSummary) {
+            selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
+            if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+          }
           showStatus(`已选择 ${nm || sym}`);
         }
       } else {
