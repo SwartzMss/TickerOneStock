@@ -60,11 +60,7 @@ body {
   color: rgba(100, 116, 139, 0.85);
 }
 
-.field--inline {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 16px;
-}
+/* inline controls removed; input stands alone */
 
 input,
 select {

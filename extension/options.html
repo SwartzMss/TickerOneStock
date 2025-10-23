@@ -15,13 +15,9 @@
       <form id="options-form" class="card">
         <section class="field">
           <label for="symbol">标的</label>
-          <div class="field--inline">
-            <input id="symbol" name="symbol" placeholder="如：贵州茅台 / 600519 / 沪深300" required />
-            <button type="button" id="detect-symbol" class="btn">检测/补全</button>
-            <button type="button" id="search-symbol" class="btn">模糊搜索</button>
-          </div>
+          <input id="symbol" name="symbol" placeholder="如：贵州茅台 / 600519 / 沪深300" required />
           <div id="search-results" class="search-results" role="listbox" aria-label="匹配结果"></div>
-          <p class="field__hint">可输入中文名或6位代码，无需写 sh/sz；点击“检测/补全”或“模糊搜索”选择。</p>
+          <p class="field__hint">输入中文或代码自动匹配；结果列表会同时显示股票代码。保存时将写入标准带前缀代码（如 sh600519）。</p>
         </section>
         <section class="field">
           <label for="bubbleWidth">气泡大小（直径 px）</label>

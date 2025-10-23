@@ -8,8 +8,6 @@ const DEFAULT_CONFIG = {
 
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
-const detectBtn = document.getElementById('detect-symbol');
-const searchBtn = document.getElementById('search-symbol');
 const searchResults = document.getElementById('search-results');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
@@ -56,6 +54,14 @@ async function handleSubmit(event) {
   event.preventDefault();
   if (!hasChrome) {
     showStatus('当前页面未在扩展环境中运行，无法保存配置。', 'error');
+    return;
+  }
+  // Ensure we save a normalized symbol (sh/sz+code)
+  try {
+    const normalized = await ensureNormalizedBeforeSave();
+    form.symbol.value = normalized;
+  } catch (e) {
+    showStatus('无法识别该标的，请更换关键词', 'error');
     return;
   }
   const config = serializeForm();
@@ -174,12 +180,23 @@ searchResults?.addEventListener('click', (e) => {
   searchResults.style.display = 'none';
 });
 
-detectBtn?.addEventListener('click', doDetect);
-searchBtn?.addEventListener('click', doSearch);
 form.symbol.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    doDetect();
+    doSearch().then(() => {
+      // Select first suggestion if available
+      const first = searchResults.querySelector('.search-item');
+      if (first) {
+        const sym = first.getAttribute('data-sym');
+        if (sym) {
+          form.symbol.value = sym;
+          searchResults.style.display = 'none';
+          showStatus(`已选择 ${sym}`);
+        }
+      } else {
+        doDetect();
+      }
+    });
   }
 });
 
@@ -238,3 +255,24 @@ form.symbol.addEventListener('input', () => {
     doSearch().catch(() => {});
   }, 250);
 });
+
+async function ensureNormalizedBeforeSave() {
+  const val = form.symbol.value.trim();
+  if (/^(sh|sz)\d{6}$/i.test(val)) return val.toLowerCase();
+  const first = searchResults.querySelector('.search-item');
+  if (first) {
+    const sym = first.getAttribute('data-sym');
+    if (sym) return sym;
+  }
+  const idx = await ensureStockIndex();
+  const key = val.toLowerCase();
+  const match = idx.find((s) => s.name.toLowerCase() === key || s.code === val);
+  if (match) return `${match.market}${match.code}`;
+  const sym2 = normalizeCodeToSymbol(val);
+  if (sym2) return sym2;
+  const api = await fetchSinaSuggest(val).catch(() => []);
+  if (api && api.length) return `${api[0].market}${api[0].code}`;
+  const api2 = await fetchTencentSuggest(val).catch(() => []);
+  if (api2 && api2.length) return `${api2[0].market}${api2[0].code}`;
+  throw new Error('no-match');
+}
