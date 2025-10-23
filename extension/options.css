@@ -62,7 +62,7 @@ body {
 
 .field--inline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: 1fr auto auto;
   gap: 16px;
 }
 
@@ -128,6 +128,27 @@ input[type='range'] {
   font-size: 13px;
   color: rgba(34, 197, 94, 0.9);
 }
+
+.search-results {
+  display: none;
+  margin-top: 8px;
+  border: 1px solid rgba(148,163,184,0.5);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.95);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.search-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.search-item:hover { background: rgba(226,232,240,0.6); }
+.search-item__name { font-weight: 600; }
+.search-item__meta { color: rgba(100,116,139,0.9); font-size: 12px; }
 
 .page__footer {
   font-size: 13px;
