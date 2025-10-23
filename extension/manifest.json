@@ -9,7 +9,8 @@
   ],
   "host_permissions": [
     "https://qt.gtimg.cn/*",
-    "https://hq.sinajs.cn/*"
+    "https://hq.sinajs.cn/*",
+    "https://suggest3.sinajs.cn/*"
   ],
   "background": {
     "service_worker": "background.js"

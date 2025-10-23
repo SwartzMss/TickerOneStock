@@ -148,6 +148,12 @@ function renderSearchResults(list) {
 
 async function doSearch() {
   const raw = form.symbol.value.trim();
+  // Prefer live API; fallback to local index
+  const apiResults = await fetchSinaSuggest(raw).catch(() => []);
+  if (apiResults && apiResults.length) {
+    renderSearchResults(apiResults);
+    return;
+  }
   const idx = await ensureStockIndex();
   if (!raw) {
     renderSearchResults(idx.slice(0, 20));
@@ -176,4 +182,37 @@ form.symbol.addEventListener('keydown', (e) => {
     e.preventDefault();
     doDetect();
   }
+});
+
+// Live API suggest (Sina)
+async function fetchSinaSuggest(key) {
+  const q = (key || form.symbol.value || '').trim();
+  if (!q) return [];
+  const url = `https://suggest3.sinajs.cn/suggest/type=11,12,13,14&key=${encodeURIComponent(q)}`;
+  const resp = await fetch(url, { cache: 'no-store', headers: { 'Content-Type': 'text/plain; charset=gbk' } });
+  const buf = await resp.arrayBuffer();
+  let decoder;
+  try { decoder = new TextDecoder('gbk'); } catch (_) { decoder = new TextDecoder('gb18030'); }
+  const text = decoder.decode(buf);
+  const m = text.match(/="([^"]*)"/);
+  if (!m) return [];
+  const entries = m[1].split(';').filter(Boolean);
+  const list = entries.map((line) => {
+    const parts = line.split(',');
+    const sym = (parts[0] || '').trim().toLowerCase();
+    const name = (parts[4] || parts[1] || '').trim();
+    const market = sym.slice(0, 2);
+    const code = sym.slice(2);
+    return market && code ? { market, code, name } : null;
+  }).filter(Boolean);
+  return list;
+}
+
+// Debounced live search on input
+let searchTimer = null;
+form.symbol.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    doSearch().catch(() => {});
+  }, 250);
 });
