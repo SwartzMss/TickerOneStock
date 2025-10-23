@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
+const selectedSummary = document.getElementById('selected-summary');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
 function storageGet(area, keys) {
@@ -39,12 +40,20 @@ async function loadConfig() {
 
   form.symbol.value = config.symbol;
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
+  if (config.symbol && syncValues.symbolName) {
+    selectedSummary.textContent = `已选择：${syncValues.symbolName}  ${config.symbol}`;
+    selectedSummary.dataset.name = syncValues.symbolName;
+  } else {
+    selectedSummary.textContent = '';
+    delete selectedSummary.dataset.name;
+  }
 }
 
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
   return {
     symbol: form.symbol.value.trim(),
+    symbolName: selectedSummary.dataset.name || undefined,
     bubbleSize: { width: bubbleWidth },
     // 透明度和主题自动
   };
@@ -58,8 +67,12 @@ async function handleSubmit(event) {
   }
   // Ensure we save a normalized symbol (sh/sz+code)
   try {
-    const normalized = await ensureNormalizedBeforeSave();
+    const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
     form.symbol.value = normalized;
+    if (resolvedName) {
+      selectedSummary.textContent = `已选择：${resolvedName}  ${normalized}`;
+      selectedSummary.dataset.name = resolvedName;
+    }
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
     return;
@@ -147,7 +160,7 @@ function renderSearchResults(list) {
   }
   searchResults.innerHTML = list
     .slice(0, 50)
-    .map((s) => `<div class="search-item" role="option" data-sym="${s.market}${s.code}"><span class="search-item__name">${s.name}</span><span class="search-item__meta">${s.market}${s.code}</span></div>`) 
+    .map((s) => `<div class="search-item" role="option" data-sym="${s.market}${s.code}" data-name="${s.name}"><span class="search-item__name">${s.name}</span><span class="search-item__meta">${s.market}${s.code}</span></div>`) 
     .join('');
   searchResults.style.display = 'block';
 }
@@ -173,9 +186,12 @@ searchResults?.addEventListener('click', (e) => {
   const item = e.target.closest('.search-item');
   if (!item) return;
   const sym = item.getAttribute('data-sym');
+  const nm = item.getAttribute('data-name') || '';
   if (sym) {
     form.symbol.value = sym;
-    showStatus(`已选择 ${sym}`);
+    selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
+    if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+    showStatus(`已选择 ${nm || sym}`);
   }
   searchResults.style.display = 'none';
 });
@@ -188,10 +204,13 @@ form.symbol.addEventListener('keydown', (e) => {
       const first = searchResults.querySelector('.search-item');
       if (first) {
         const sym = first.getAttribute('data-sym');
+        const nm = first.getAttribute('data-name') || '';
         if (sym) {
           form.symbol.value = sym;
           searchResults.style.display = 'none';
-          showStatus(`已选择 ${sym}`);
+          selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
+          if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
+          showStatus(`已选择 ${nm || sym}`);
         }
       } else {
         doDetect();
@@ -258,21 +277,51 @@ form.symbol.addEventListener('input', () => {
 
 async function ensureNormalizedBeforeSave() {
   const val = form.symbol.value.trim();
-  if (/^(sh|sz)\d{6}$/i.test(val)) return val.toLowerCase();
+  if (/^(sh|sz)\d{6}$/i.test(val)) {
+    const name = await resolveNameForSymbol(val).catch(() => undefined);
+    return { symbol: val.toLowerCase(), name };
+  }
   const first = searchResults.querySelector('.search-item');
   if (first) {
     const sym = first.getAttribute('data-sym');
-    if (sym) return sym;
+    const nm = first.getAttribute('data-name') || '';
+    if (sym) return { symbol: sym, name: nm };
   }
   const idx = await ensureStockIndex();
   const key = val.toLowerCase();
   const match = idx.find((s) => s.name.toLowerCase() === key || s.code === val);
-  if (match) return `${match.market}${match.code}`;
+  if (match) return { symbol: `${match.market}${match.code}`, name: match.name };
   const sym2 = normalizeCodeToSymbol(val);
-  if (sym2) return sym2;
+  if (sym2) {
+    const name = await resolveNameForSymbol(sym2).catch(() => undefined);
+    return { symbol: sym2, name };
+  }
   const api = await fetchSinaSuggest(val).catch(() => []);
-  if (api && api.length) return `${api[0].market}${api[0].code}`;
+  if (api && api.length) {
+    const a = api[0];
+    return { symbol: `${a.market}${a.code}`, name: a.name };
+  }
   const api2 = await fetchTencentSuggest(val).catch(() => []);
-  if (api2 && api2.length) return `${api2[0].market}${api2[0].code}`;
+  if (api2 && api2.length) {
+    const a2 = api2[0];
+    return { symbol: `${a2.market}${a2.code}`, name: a2.name };
+  }
   throw new Error('no-match');
+}
+
+async function resolveNameForSymbol(sym) {
+  const code = sym.slice(2);
+  let list = await fetchSinaSuggest(code).catch(() => []);
+  if (list && list.length) {
+    const hit = list.find((x) => `${x.market}${x.code}`.toLowerCase() === sym.toLowerCase());
+    if (hit) return hit.name;
+  }
+  list = await fetchTencentSuggest(code).catch(() => []);
+  if (list && list.length) {
+    const hit = list.find((x) => `${x.market}${x.code}`.toLowerCase() === sym.toLowerCase());
+    if (hit) return hit.name;
+  }
+  const idx = await ensureStockIndex();
+  const item = idx.find((s) => `${s.market}${s.code}`.toLowerCase() === sym.toLowerCase());
+  return item?.name;
 }

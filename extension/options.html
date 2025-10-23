@@ -16,6 +16,7 @@
         <section class="field">
           <label for="symbol">标的</label>
           <input id="symbol" name="symbol" placeholder="如：贵州茅台 / 600519 / 沪深300" required />
+          <p id="selected-summary" class="field__hint" aria-live="polite"></p>
           <div id="search-results" class="search-results" role="listbox" aria-label="匹配结果"></div>
           <p class="field__hint">输入中文或代码自动匹配；结果列表会同时显示股票代码。保存时将写入标准带前缀代码（如 sh600519）。</p>
         </section>
