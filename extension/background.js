@@ -89,6 +89,10 @@ function makeCircleImageData(size, color) {
 
 async function updateActionIcon(isEnabled = true) {
   try {
+    if (typeof OffscreenCanvas === 'undefined') {
+      // OffscreenCanvas may be unavailable in some environments; skip icon update
+      return;
+    }
     const color = colorForEnabled(isEnabled);
     const sizes = [16, 32, 48, 128];
     const imageData = {};
@@ -344,6 +348,8 @@ async function init() {
   // schedule daily index refresh at 06:00 local
   try { await chrome.alarms.clear('refreshIndexDaily'); } catch (_) {}
   scheduleDailyRefresh();
+  // Proactively refresh Eastmoney index once at startup (non-blocking)
+  refreshIndexFromEastmoney().catch(() => {});
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -430,7 +436,65 @@ async function fetchAndCacheIndexFromUrl(url) {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm?.name !== 'refreshIndexDaily') return;
-  const { indexUrl } = await new Promise((resolve) => chrome.storage.sync.get(['indexUrl'], resolve));
-  const fallback = 'https://raw.githubusercontent.com/your-name/TickerOneStock/main/extension/stocks.json';
-  await fetchAndCacheIndexFromUrl(indexUrl || fallback);
+  await refreshIndexFromEastmoney();
+});
+
+// --- Eastmoney local index refresh ---
+async function refreshIndexFromEastmoney() {
+  try {
+    const url = 'https://push2.eastmoney.com/api/qt/clist/get';
+    const params = {
+      pn: 1,
+      pz: 5000,
+      po: 1,
+      np: 1,
+      fltt: 2,
+      invt: 2,
+      fid: 'f3',
+      fields: 'f12,f14',
+      fs: 'm:1 t:2,m:0 t:6' // 上证/深证 A 股
+    };
+    const qs = new URLSearchParams(params).toString();
+    const resp = await fetch(`${url}?${qs}`, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const list = (json?.data?.diff || []).map((x) => ({ code: String(x.f12 || '').trim(), name: String(x.f14 || '').trim() }));
+    const cleaned = list
+      .filter((x) => /^\d{6}$/.test(x.code) && x.name)
+      .map((x) => ({
+        market: x.code.startsWith('6') ? 'sh' : 'sz',
+        code: x.code,
+        name: x.name
+      }));
+    // de-duplicate by market+code
+    const uniqMap = new Map();
+    for (const it of cleaned) {
+      uniqMap.set(`${it.market}${it.code}`, it);
+    }
+    const finalList = Array.from(uniqMap.values());
+    await chrome.storage.local.set({
+      stockIndex: finalList,
+      stockIndexUpdatedAt: Date.now(),
+      stockIndexLastStatus: 'success',
+      stockIndexLastError: ''
+    });
+    return { ok: true, size: finalList.length };
+  } catch (e) {
+    console.warn('[bg] eastmoney refresh failed', e);
+    await chrome.storage.local.set({
+      stockIndexUpdatedAt: Date.now(),
+      stockIndexLastStatus: 'fail',
+      stockIndexLastError: String(e && e.message ? e.message : e)
+    });
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+// Expose manual refresh via message
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || typeof message.type !== 'string') return;
+  if (message.type === 'REFRESH_STOCK_INDEX') {
+    refreshIndexFromEastmoney().then((res) => sendResponse(res)).catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  }
 });

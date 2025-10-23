@@ -14,6 +14,8 @@ const searchResults = document.getElementById('search-results');
 const selectedSummary = document.getElementById('selected-summary');
 const refreshIndexBtn = document.getElementById('refresh-index');
 const indexInfo = document.getElementById('index-info');
+const btnRefreshEastmoney = document.getElementById('btn-refresh-eastmoney');
+const eastmoneyStatusEl = document.getElementById('eastmoney-status');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 const DEBUG = true;
 
@@ -53,6 +55,23 @@ async function loadConfig() {
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
   // index url
   if (form.indexUrl) form.indexUrl.value = syncValues.indexUrl || DEFAULT_INDEX_URL || '';
+  // eastmoney status
+  if (hasChrome && eastmoneyStatusEl) {
+    const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndexUpdatedAt', 'stockIndexLastStatus', 'stockIndexLastError', 'stockIndex'], resolve));
+    const cnt = Array.isArray(local.stockIndex) ? local.stockIndex.length : 0;
+    const when = local.stockIndexUpdatedAt ? new Date(local.stockIndexUpdatedAt).toLocaleString() : '从未';
+    const status = local.stockIndexLastStatus || (cnt > 0 ? 'success' : 'unknown');
+    if (status === 'success') {
+      eastmoneyStatusEl.textContent = `成功，${when}，共 ${cnt} 条`;
+      eastmoneyStatusEl.style.color = '';
+    } else if (status === 'fail') {
+      eastmoneyStatusEl.textContent = `失败，${when}，${local.stockIndexLastError || ''}`;
+      eastmoneyStatusEl.style.color = 'rgba(239, 68, 68, 0.9)';
+    } else {
+      eastmoneyStatusEl.textContent = `未知，${when}`;
+      eastmoneyStatusEl.style.color = '';
+    }
+  }
 }
 
 function parseCombinedSymbol(input) {
@@ -447,3 +466,21 @@ async function refreshStockIndex() {
 }
 
 refreshIndexBtn?.addEventListener('click', refreshStockIndex);
+
+// Manual refresh via Eastmoney
+btnRefreshEastmoney?.addEventListener('click', () => {
+  if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
+  btnRefreshEastmoney.disabled = true;
+  btnRefreshEastmoney.textContent = '获取中…';
+  chrome.runtime.sendMessage({ type: 'REFRESH_STOCK_INDEX' }, (res) => {
+    btnRefreshEastmoney.disabled = false;
+    btnRefreshEastmoney.textContent = '手动获取/更新';
+    if (res && res.ok) {
+      showStatus(`已更新 ${res.size || 0} 条`);
+    } else {
+      showStatus(`获取失败：${res && res.error ? res.error : '未知错误'}`, 'error');
+    }
+    // refresh status line
+    loadConfig();
+  });
+});
