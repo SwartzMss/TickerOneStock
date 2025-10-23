@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
+const selectedSummary = document.getElementById('selected-summary');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
 function storageGet(area, keys) {
@@ -37,10 +38,10 @@ async function loadConfig() {
   const syncValues = await storageGet('sync', Object.keys(DEFAULT_CONFIG));
   const config = { ...DEFAULT_CONFIG, ...syncValues };
 
-  if (config.symbol && syncValues.symbolName) {
+  if (config.symbol && /^(sh|sz)\d{6}$/i.test(config.symbol) && syncValues.symbolName) {
     form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
   } else {
-    form.symbol.value = config.symbol;
+    form.symbol.value = config.symbol || '';
   }
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
 }
