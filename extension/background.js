@@ -19,6 +19,7 @@ let consecutiveFailures = 0;
 let lastQuote = null;
 let enabled = true; // 控制是否在页面显示气泡
 let lastSuccessfulProvider = null; // 上次成功的行情源
+const DEBUG = true; // 后台调试日志已开启
 
 function storageGet(area, keys) {
   return new Promise((resolve) => {
@@ -230,6 +231,7 @@ async function fetchQuote() {
         }
         const text = decoder.decode(buffer);
         const q = parseSinaQuote(symbol, text);
+        if (DEBUG) console.debug('[bg] Sina parsed', q);
         return computeQuoteMetrics(q);
       } else {
         const url = `https://qt.gtimg.cn/q=${symbol}`;
@@ -237,6 +239,7 @@ async function fetchQuote() {
         if (!response.ok) throw new Error(`Tencent HTTP ${response.status}`);
         const text = await response.text();
         const q = parseTencentQuote(symbol, text);
+        if (DEBUG) console.debug('[bg] Tencent parsed', q);
         return computeQuoteMetrics(q);
       }
     } finally {
@@ -247,6 +250,7 @@ async function fetchQuote() {
   const prefer = lastSuccessfulProvider || 'tencent';
   const fallback = prefer === 'tencent' ? 'sina' : 'tencent';
   try {
+    if (DEBUG) console.debug('[bg] fetchQuote prefer', prefer, 'symbol=', symbol);
     const q = await fetchFromProvider(prefer);
     if (q && q.provider) {
       lastSuccessfulProvider = q.provider;
@@ -255,6 +259,7 @@ async function fetchQuote() {
     return q;
   } catch (e1) {
     try {
+      if (DEBUG) console.debug('[bg] fetchQuote fallback', fallback, 'err1=', e1?.message || e1);
       const q2 = await fetchFromProvider(fallback);
       if (q2 && q2.provider) {
         lastSuccessfulProvider = q2.provider;
@@ -262,6 +267,7 @@ async function fetchQuote() {
       }
       return q2;
     } catch (e2) {
+      if (DEBUG) console.debug('[bg] fetchQuote both failed', e1, e2);
       // 都失败则抛出组合错误信息，便于排查
       throw new Error(`${e1?.message || e1} | ${e2?.message || e2}`);
     }

@@ -11,6 +11,7 @@ const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
 const selectedSummary = document.getElementById('selected-summary');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
+const DEBUG = true;
 
 function storageGet(area, keys) {
   if (!hasChrome) {
@@ -37,6 +38,7 @@ function showStatus(message, type = 'success') {
 async function loadConfig() {
   const syncValues = await storageGet('sync', Object.keys(DEFAULT_CONFIG));
   const config = { ...DEFAULT_CONFIG, ...syncValues };
+  if (DEBUG) console.debug('[options] loadConfig syncValues=', syncValues);
 
   if (config.symbol && /^(sh|sz)\d{6}$/i.test(config.symbol) && syncValues.symbolName) {
     form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
@@ -58,6 +60,7 @@ function parseCombinedSymbol(input) {
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
   const parsed = parseCombinedSymbol(form.symbol.value);
+  if (DEBUG) console.debug('[options] serializeForm parsed=', parsed);
   return {
     symbol: parsed.symbol,
     symbolName: parsed.name,
@@ -76,8 +79,10 @@ async function handleSubmit(event) {
   try {
     const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
     form.symbol.value = resolvedName ? `${resolvedName}  ${normalized}` : normalized;
+    if (DEBUG) console.debug('[options] normalized before save =', { normalized, resolvedName });
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
+    if (DEBUG) console.debug('[options] normalize failed', e);
     return;
   }
   const config = serializeForm();
