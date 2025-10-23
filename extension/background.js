@@ -19,6 +19,7 @@ let currentConfig = { ...DEFAULT_CONFIG };
 let pollTimerId = null;
 let lastQuote = null;
 let enabled = true; // 控制是否在页面显示气泡
+let lastSuccessfulProvider = null; // 上次成功的行情源
 
 function storageGet(area, keys) {
   return new Promise((resolve) => {
@@ -201,37 +202,65 @@ function parseSinaQuote(symbol, text) {
 
 async function fetchQuote() {
   const symbol = currentConfig.symbol;
-  const provider = currentConfig.quoteProvider;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Math.max(5000, currentConfig.refreshInterval * 1000));
-  try {
-    if (provider === 'sina') {
-      const url = `https://hq.sinajs.cn/list=${symbol}`;
-      const response = await fetch(url, {
-        cache: 'no-store',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'text/plain; charset=gbk' }
-      });
-      const buffer = await response.arrayBuffer();
-      let decoder;
-      try {
-        decoder = new TextDecoder('gbk');
-      } catch (error) {
+
+  async function fetchFromProvider(provider) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Math.max(5000, currentConfig.refreshInterval * 1000));
+    try {
+      if (provider === 'sina') {
+        const url = `https://hq.sinajs.cn/list=${symbol}`;
+        const response = await fetch(url, {
+          cache: 'no-store',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'text/plain; charset=gbk' }
+        });
+        if (!response.ok) throw new Error(`Sina HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        let decoder;
         try {
-          decoder = new TextDecoder('gb18030');
-        } catch (_) {
-          decoder = new TextDecoder();
+          decoder = new TextDecoder('gbk');
+        } catch (error) {
+          try {
+            decoder = new TextDecoder('gb18030');
+          } catch (_) {
+            decoder = new TextDecoder();
+          }
         }
+        const text = decoder.decode(buffer);
+        return computeQuoteMetrics(parseSinaQuote(symbol, text));
+      } else {
+        const url = `https://qt.gtimg.cn/q=${symbol}`;
+        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error(`Tencent HTTP ${response.status}`);
+        const text = await response.text();
+        return computeQuoteMetrics(parseTencentQuote(symbol, text));
       }
-      const text = decoder.decode(buffer);
-      return computeQuoteMetrics(parseSinaQuote(symbol, text));
+    } finally {
+      clearTimeout(timeout);
     }
-    const url = `https://qt.gtimg.cn/q=${symbol}`;
-    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
-    const text = await response.text();
-    return computeQuoteMetrics(parseTencentQuote(symbol, text));
-  } finally {
-    clearTimeout(timeout);
+  }
+
+  const prefer = lastSuccessfulProvider || currentConfig.quoteProvider || 'tencent';
+  const fallback = prefer === 'tencent' ? 'sina' : 'tencent';
+  try {
+    const q = await fetchFromProvider(prefer);
+    if (q && q.provider) {
+      lastSuccessfulProvider = q.provider;
+      await storageSet('local', { lastSuccessfulProvider });
+    }
+    return q;
+  } catch (e1) {
+    try {
+      const q2 = await fetchFromProvider(fallback);
+      if (q2 && q2.provider) {
+        lastSuccessfulProvider = q2.provider;
+        await storageSet('local', { lastSuccessfulProvider });
+      }
+      return q2;
+    } catch (e2) {
+      // 都失败则抛出第一错误
+      throw e1;
+    }
   }
 }
 
@@ -263,11 +292,14 @@ function startPolling() {
 async function init() {
   await ensureDefaults();
   await loadConfig();
-  const local = await storageGet('local', ['lastQuote', 'enabled']);
+  const local = await storageGet('local', ['lastQuote', 'enabled', 'lastSuccessfulProvider']);
   if (local.lastQuote) {
     lastQuote = local.lastQuote;
   }
   enabled = typeof local.enabled === 'boolean' ? local.enabled : true;
+  if (typeof local.lastSuccessfulProvider === 'string') {
+    lastSuccessfulProvider = local.lastSuccessfulProvider;
+  }
   updateActionIcon(enabled);
   startPolling();
 }
