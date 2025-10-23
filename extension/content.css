@@ -126,25 +126,7 @@
   font-style: italic;
 }
 
-.tos-reopen-button {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 2147483647;
-  display: none;
-  padding: 10px 16px;
-  background: rgba(59, 130, 246, 0.9);
-  color: #f8fafc;
-  border: none;
-  border-radius: 9999px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(29, 78, 216, 0.35);
-}
-
-.tos-reopen-button:hover {
-  background: rgba(37, 99, 235, 0.95);
-}
+/* reopen button removed; toggling via action icon / hotkey */
 
 .tos-bubble.tos-collapsed {
   min-height: auto;

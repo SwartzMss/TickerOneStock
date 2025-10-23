@@ -77,14 +77,8 @@ function applyCollapsedState() {
 }
 
 function applyHiddenState() {
-  if (!bubbleEl || !reopenButton) return;
-  if (bubbleState.hidden) {
-    bubbleEl.style.display = 'none';
-    reopenButton.style.display = 'flex';
-  } else {
-    bubbleEl.style.display = 'flex';
-    reopenButton.style.display = 'none';
-  }
+  if (!bubbleEl) return;
+  bubbleEl.style.display = bubbleState.hidden ? 'none' : 'flex';
 }
 
 function updateTheme() {
@@ -181,17 +175,8 @@ function persistPosition(x, y) {
 }
 
 function createReopenButton() {
-  if (reopenButton) return;
-  reopenButton = document.createElement('button');
-  reopenButton.className = 'tos-reopen-button';
-  reopenButton.type = 'button';
-  reopenButton.textContent = '显示行情气泡';
-  reopenButton.addEventListener('click', () => {
-    bubbleState.hidden = false;
-    applyHiddenState();
-    persistBubbleState({ hidden: false });
-  });
-  (document.body || document.documentElement).appendChild(reopenButton);
+  // 按钮已移除：通过浏览器图标或快捷键切换显示
+  return;
 }
 
 function setupDrag(handleEl) {
