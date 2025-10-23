@@ -2,7 +2,7 @@ const DEFAULT_CONFIG = {
   symbol: 'sh000300',
   refreshInterval: 10,
   quoteProvider: 'tencent',
-  bubbleOpacity: 0.95,
+  bubbleOpacity: 1,
   bubbleSize: { width: 120, height: 120 },
   bubblePosition: { x: 24, y: 24 },
   theme: 'auto'

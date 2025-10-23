@@ -5,21 +5,20 @@
   left: 24px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(148, 163, 184, 0.9);
+  background: #ffffff;
   color: #0f172a;
   font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  backdrop-filter: blur(6px);
   min-width: 80px;
   pointer-events: auto;
 }
 
 .tos-bubble.tos-dark {
-  background: rgba(15, 23, 42, 0.9);
+  background: #0f172a;
   color: #e2e8f0;
-  border-color: rgba(71, 85, 105, 0.7);
+  border-color: rgba(71, 85, 105, 0.9);
 }
 
 .tos-bubble[data-direction='up'] .tos-header {
@@ -104,7 +103,8 @@
 
 .tos-change {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   color: rgba(15, 118, 110, 0.9);
 }
 
@@ -130,6 +130,17 @@
   /* ensure it's visually centered */
   align-items: center;
   justify-content: center;
+}
+
+/* Use stronger ring color by direction to降低虚感 */
+.tos-bubble[data-direction='up'] {
+  border-color: #ef4444;
+}
+.tos-bubble[data-direction='down'] {
+  border-color: #22c55e;
+}
+.tos-bubble[data-direction='flat'] {
+  border-color: #94a3b8;
 }
 
 .tos-bubble.tos-round .tos-header,
