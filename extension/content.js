@@ -360,10 +360,12 @@ function attachStorageListener() {
           config = { ...config, bubbleOpacity: change.newValue };
           shouldUpdateOpacity = true;
         } else if (key === 'bubbleSize') {
-          config = { ...config, bubbleSize: change.newValue };
-          bubbleState = { ...bubbleState, bubbleSize: change.newValue };
+          const newSize = change.newValue || {};
+          const width = Number(newSize.width) || bubbleState.bubbleSize.width;
+          config = { ...config, bubbleSize: { width } };
+          bubbleState = { ...bubbleState, bubbleSize: { width, height: width } };
           applyBubbleSize();
-          persistBubbleState({ bubbleSize: change.newValue });
+          persistBubbleState({ bubbleSize: bubbleState.bubbleSize });
         } else if (key === 'theme') {
           config = { ...config, theme: change.newValue };
           shouldUpdateTheme = true;

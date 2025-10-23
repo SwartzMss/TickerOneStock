@@ -45,7 +45,6 @@ async function loadConfig() {
   form.refreshInterval.value = config.refreshInterval;
   form.quoteProvider.value = config.quoteProvider;
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
-  form.bubbleHeight.value = config.bubbleSize?.height ?? DEFAULT_CONFIG.bubbleSize.height;
   form.theme.value = config.theme || 'auto';
   opacityInput.value = config.bubbleOpacity;
   opacityValue.textContent = Number(config.bubbleOpacity).toFixed(2);
@@ -53,13 +52,12 @@ async function loadConfig() {
 
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
-  const bubbleHeight = Number(form.bubbleHeight.value) || DEFAULT_CONFIG.bubbleSize.height;
   return {
     symbol: form.symbol.value.trim(),
     refreshInterval: Math.max(3, Number(form.refreshInterval.value) || DEFAULT_CONFIG.refreshInterval),
     quoteProvider: form.quoteProvider.value,
     bubbleOpacity: Number(opacityInput.value),
-    bubbleSize: { width: bubbleWidth, height: bubbleHeight },
+    bubbleSize: { width: bubbleWidth },
     theme: form.theme.value
   };
 }

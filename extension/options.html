@@ -30,15 +30,10 @@
             <option value="sina">新浪行情</option>
           </select>
         </section>
-        <section class="field field--inline">
-          <div>
-            <label for="bubbleWidth">气泡宽度（px）</label>
-            <input id="bubbleWidth" name="bubbleWidth" type="number" min="60" max="480" step="10" />
-          </div>
-          <div>
-            <label for="bubbleHeight">气泡高度（px）</label>
-            <input id="bubbleHeight" name="bubbleHeight" type="number" min="60" max="400" step="10" />
-          </div>
+        <section class="field">
+          <label for="bubbleWidth">气泡大小（直径 px）</label>
+          <input id="bubbleWidth" name="bubbleWidth" type="number" min="60" max="480" step="10" />
+          <p class="field__hint">圆形气泡仅使用宽度作为直径，高度将自动等于宽度。</p>
         </section>
         <section class="field">
           <label for="bubbleOpacity">气泡透明度</label>
