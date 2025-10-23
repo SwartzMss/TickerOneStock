@@ -8,7 +8,6 @@ const DEFAULT_CONFIG = {
 
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
-const resetBubbleBtn = document.getElementById('reset-bubble');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
 function storageGet(area, keys) {
@@ -63,21 +62,7 @@ async function handleSubmit(event) {
 
 // 透明度与主题已自动，无需交互
 
-resetBubbleBtn.addEventListener('click', async () => {
-  if (!hasChrome) {
-    showStatus('当前页面未在扩展环境中运行，无法重置气泡。', 'error');
-    return;
-  }
-  const defaultState = {
-    collapsed: false,
-    hidden: false,
-    bubblePosition: { ...DEFAULT_CONFIG.bubblePosition },
-    bubbleSize: { ...DEFAULT_CONFIG.bubbleSize }
-  };
-  await storageSet('local', { bubbleState: defaultState });
-  chrome.runtime.sendMessage({ type: 'SAVE_BUBBLE_STATE', payload: defaultState });
-  showStatus('已重置气泡位置与状态。');
-});
+// 移除“重置气泡位置”按钮逻辑
 
 form.addEventListener('submit', handleSubmit);
 
