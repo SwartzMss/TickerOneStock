@@ -101,6 +101,22 @@ async function updateActionIcon(isEnabled = true) {
   }
 }
 
+async function broadcastEnabledToAllTabs(isEnabled) {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(
+    tabs
+      .filter((tab) => typeof tab.id === 'number')
+      .map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'SET_ENABLED', payload: { enabled: isEnabled } }).catch(() => {}))
+  );
+}
+
+async function toggleEnabled() {
+  enabled = !enabled;
+  await storageSet('local', { enabled });
+  updateActionIcon(enabled);
+  await broadcastEnabledToAllTabs(enabled);
+}
+
 async function broadcastQuote(quote) {
   try {
     const tabs = await chrome.tabs.query({});
@@ -301,19 +317,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.action.onClicked.addListener(async () => {
-  try {
-    enabled = !enabled;
-    await storageSet('local', { enabled });
-    updateActionIcon(enabled);
-    // 广播到所有标签页，切换可见性
-    const tabs = await chrome.tabs.query({});
-    await Promise.all(
-      tabs
-        .filter((tab) => typeof tab.id === 'number')
-        .map((tab) => chrome.tabs.sendMessage(tab.id, { type: 'SET_ENABLED', payload: { enabled } }).catch(() => {}))
-    );
-  } catch (_) {}
+chrome.action.onClicked.addListener(() => { toggleEnabled(); });
+
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'toggle-enabled') {
+    toggleEnabled();
+  }
 });
 
 init();
