@@ -123,13 +123,14 @@
   font-family: inherit;
 }
 
-/* Round bubble style for change-only mode */
-.tos-bubble.tos-round {
-  border-radius: 50%;
-  overflow: hidden;
-  /* ensure it's visually centered */
+/* Rocket style for change-only mode */
+.tos-bubble.tos-rocket {
+  border-radius: 12px;
+  overflow: visible;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: none;
 }
 
 /* Use stronger ring color by direction to降低虚感 */
@@ -143,12 +144,13 @@
   border-color: #94a3b8;
 }
 
-.tos-bubble.tos-round .tos-header,
-.tos-bubble.tos-round .tos-footer {
+.tos-bubble.tos-rocket .tos-header,
+.tos-bubble.tos-rocket .tos-footer {
   display: none;
 }
 
-.tos-bubble.tos-round .tos-body {
+.tos-bubble.tos-rocket .tos-body {
+  position: relative;
   width: 100%;
   height: 100%;
   padding: 0;
@@ -157,8 +159,28 @@
   justify-content: center;
 }
 
-.tos-bubble.tos-round .tos-change {
+.tos-rocket-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: rotate(-15deg);
+}
+
+.tos-bubble[data-direction='up'] { border-color: #ef4444; color: #ef4444; }
+.tos-bubble[data-direction='down'] { border-color: #22c55e; color: #22c55e; }
+.tos-bubble[data-direction='flat'] { border-color: #94a3b8; color: #94a3b8; }
+
+.tos-rocket-svg .rocket-fill { fill: currentColor; }
+.tos-rocket-svg .rocket-window { fill: rgba(255,255,255,0.9); }
+.tos-rocket-svg .rocket-flame { fill: rgba(255, 159, 64, 0.9); }
+
+.tos-bubble.tos-rocket .tos-change {
   font-size: 22px;
   font-weight: 700;
   text-align: center;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }

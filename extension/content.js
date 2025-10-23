@@ -20,6 +20,7 @@ let prefersDarkMedia = null;
 let prefersDarkListener = null;
 let changeCycleTimer = null;
 let showPercent = false;
+let rocketEl = null;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -54,14 +55,9 @@ function applyBubbleSize() {
   if (!bubbleEl) return;
   const { width, height } = bubbleState.bubbleSize;
   bubbleEl.style.width = `${width}px`;
-  if (bubbleEl.classList.contains('tos-round')) {
-    // enforce circle by making height = width
-    bubbleEl.style.height = `${width}px`;
-    updateAdaptiveFontSize(width);
-  } else {
-    bubbleEl.style.height = bubbleState.collapsed ? '' : `${height}px`;
-    updateAdaptiveFontSize(height);
-  }
+  // Rocket uses square canvas area; keep height = width
+  bubbleEl.style.height = `${width}px`;
+  updateAdaptiveFontSize(width);
 }
 
 function applyCollapsedState() {
@@ -93,9 +89,9 @@ function updateTheme() {
   }
 }
 
-function forceRoundMode() {
+function forceRocketMode() {
   if (!bubbleEl) return;
-  bubbleEl.classList.add('tos-round');
+  bubbleEl.classList.add('tos-rocket');
   applyBubbleSize();
 }
 
@@ -273,7 +269,31 @@ function createBubble() {
   changeEl.className = 'tos-change';
   changeEl.textContent = '--';
 
-  bodyEl.append(priceEl, changeEl);
+  // Rocket SVG as background illustration
+  rocketEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  rocketEl.setAttribute('viewBox', '0 0 100 100');
+  rocketEl.setAttribute('class', 'tos-rocket-svg');
+  // Simple rocket: body, window, fins, flame
+  const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  body.setAttribute('class', 'rocket-fill');
+  body.setAttribute('d', 'M50 8 C60 18 66 30 66 44 L66 70 L34 70 L34 44 C34 30 40 18 50 8 Z');
+  const leftFin = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  leftFin.setAttribute('class', 'rocket-fill');
+  leftFin.setAttribute('d', 'M34 60 L20 72 L34 70 Z');
+  const rightFin = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  rightFin.setAttribute('class', 'rocket-fill');
+  rightFin.setAttribute('d', 'M66 60 L80 72 L66 70 Z');
+  const windowC = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  windowC.setAttribute('class', 'rocket-window');
+  windowC.setAttribute('cx', '50');
+  windowC.setAttribute('cy', '38');
+  windowC.setAttribute('r', '6');
+  const flame = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  flame.setAttribute('class', 'rocket-flame');
+  flame.setAttribute('d', 'M45 70 C50 85 50 85 55 70 Z');
+  rocketEl.append(body, leftFin, rightFin, windowC, flame);
+
+  bodyEl.append(rocketEl, priceEl, changeEl);
   bubbleEl.append(header, bodyEl);
   (document.body || document.documentElement).appendChild(bubbleEl);
 
@@ -286,7 +306,7 @@ function createBubble() {
   applyCollapsedState();
   applyHiddenState();
   updateTheme();
-  forceRoundMode();
+  forceRocketMode();
   updateOpacity();
   updateQuoteDisplay();
   setupChangeCycle();
