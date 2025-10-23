@@ -3,7 +3,7 @@ const DEFAULT_CONFIG = {
   refreshInterval: 10,
   quoteProvider: 'tencent',
   bubbleOpacity: 0.95,
-  bubbleSize: { width: 220, height: 120 },
+  bubbleSize: { width: 120, height: 120 },
   bubblePosition: { x: 24, y: 24 },
   theme: 'auto'
 };

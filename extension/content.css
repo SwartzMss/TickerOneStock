@@ -12,7 +12,7 @@
   color: #0f172a;
   font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   backdrop-filter: blur(6px);
-  min-width: 200px;
+  min-width: 80px;
   pointer-events: auto;
 }
 
