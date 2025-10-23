@@ -317,9 +317,54 @@ btnRefreshEastmoney?.addEventListener('click', () => {
     if (res && res.ok) {
       showStatus(`已更新 ${res.size || 0} 条`);
     } else {
-      showStatus(`获取失败：${res && res.error ? res.error : '未知错误'}`, 'error');
+      // fallback: try fetching in options page context
+      refreshIndexFromEastmoneyInPage().then((ok) => {
+        if (ok) showStatus('已更新（页内拉取）');
+        else showStatus(`获取失败：${res && res.error ? res.error : '未知错误'}`, 'error');
+        loadConfig();
+      });
+      return;
     }
     // refresh status line
     loadConfig();
   });
 });
+
+// Fallback Eastmoney fetch in options page context
+async function refreshIndexFromEastmoneyInPage() {
+  try {
+    const url = 'https://push2.eastmoney.com/api/qt/clist/get';
+    const segments = ['m:1 t:2', 'm:1 t:23', 'm:0 t:6', 'm:0 t:80', 'm:0 t:81'];
+    const all = [];
+    for (const fs of segments) {
+      let pn = 1;
+      const pz = 500;
+      for (let i = 0; i < 50; i++) {
+        const params = { pn, pz, po: 1, np: 1, fltt: 2, invt: 2, fid: 'f3', fields: 'f12,f14', fs };
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(`${url}?${qs}`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+        const diff = json?.data?.diff || [];
+        if (!Array.isArray(diff) || diff.length === 0) break;
+        for (const x of diff) {
+          const code = String(x?.f12 || '').trim();
+          const name = String(x?.f14 || '').trim();
+          if (/^\d{6}$/.test(code) && name) all.push({ code, name });
+        }
+        pn += 1;
+      }
+    }
+    const cleaned = all
+      .filter((x) => /^\d{6}$/.test(x.code) && x.name)
+      .map((x) => ({ market: x.code.startsWith('6') ? 'sh' : 'sz', code: x.code, name: x.name }));
+    const uniqMap = new Map();
+    for (const it of cleaned) uniqMap.set(`${it.market}${it.code}`, it);
+    const finalList = Array.from(uniqMap.values());
+    await new Promise((resolve) => chrome.storage.local.set({ stockIndex: finalList, stockIndexUpdatedAt: Date.now(), stockIndexLastStatus: 'success', stockIndexLastError: '' }, resolve));
+    return true;
+  } catch (e) {
+    await new Promise((resolve) => chrome.storage.local.set({ stockIndexUpdatedAt: Date.now(), stockIndexLastStatus: 'fail', stockIndexLastError: String(e && e.message ? e.message : e) }, resolve));
+    return false;
+  }
+}
