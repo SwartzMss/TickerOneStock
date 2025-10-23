@@ -11,7 +11,6 @@ const DEFAULT_CONFIG = {
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
-const selectedSummary = document.getElementById('selected-summary');
 const btnRefreshEastmoney = document.getElementById('btn-refresh-eastmoney');
 const eastmoneyStatusEl = document.getElementById('eastmoney-status');
 const btnExportIndex = document.getElementById('btn-export-index');
@@ -67,26 +66,7 @@ async function loadConfig() {
   }
 }
 
-function parseCombinedSymbol(input) {
-  const val = String(input || '').trim();
-  const m = val.match(/(sh|sz)\d{6}/i);
-  if (!m) return { symbol: val, name: undefined };
-  const sym = m[0].toLowerCase();
-  const name = val.slice(0, m.index).trim() || undefined;
-  return { symbol: sym, name };
-}
-
-function serializeForm() {
-  const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
-  const parsed = parseCombinedSymbol(form.symbol.value);
-  if (DEBUG) console.log('[options] serializeForm parsed=', parsed);
-  return {
-    symbol: parsed.symbol,
-    symbolName: parsed.name,
-    bubbleSize: { width: bubbleWidth },
-    // 透明度和主题自动
-  };
-}
+// removed legacy parse/serialize helpers
 
 async function handleSubmit(event) {
   event.preventDefault();
@@ -224,10 +204,6 @@ searchResults?.addEventListener('click', (e) => {
   const nm = item.getAttribute('data-name') || '';
   if (sym) {
     form.symbol.value = nm ? `${nm}  ${sym}` : sym;
-    if (selectedSummary) {
-      selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
-      if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
-    }
     showStatus(`已选择 ${nm || sym}`);
   }
   searchResults.style.display = 'none';
@@ -245,10 +221,6 @@ form.symbol.addEventListener('keydown', (e) => {
         if (sym) {
           form.symbol.value = nm ? `${nm}  ${sym}` : sym;
           searchResults.style.display = 'none';
-          if (selectedSummary) {
-            selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
-            if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
-          }
           showStatus(`已选择 ${nm || sym}`);
         }
       } else {
