@@ -74,16 +74,19 @@ function colorForEnabled(isEnabled) {
   return isEnabled ? '#ef4444' : '#22c55e';
 }
 
-function makeCircleImageData(size, color) {
+function makeLetterAImageData(size, color) {
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, size, size);
+  // Transparent background; draw anti-aliased letter A
+  const fontSize = Math.floor(size * 0.75);
+  ctx.font = `700 ${fontSize}px system-ui, -apple-system, Segoe UI, Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = color;
-  const r = Math.floor(size / 2);
-  ctx.beginPath();
-  ctx.arc(r, r, r - 1, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fill();
+  // Slight vertical tweak for better centering across sizes
+  const cy = size / 2 + Math.floor(size * 0.05);
+  ctx.fillText('A', size / 2, cy);
   return ctx.getImageData(0, 0, size, size);
 }
 
@@ -97,7 +100,7 @@ async function updateActionIcon(isEnabled = true) {
     const sizes = [16, 32, 48, 128];
     const imageData = {};
     for (const s of sizes) {
-      imageData[s] = makeCircleImageData(s, color);
+      imageData[s] = makeLetterAImageData(s, color);
     }
     await chrome.action.setIcon({ imageData });
   } catch (_) {
