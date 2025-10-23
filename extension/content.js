@@ -292,7 +292,8 @@ function createBubble() {
   flame.setAttribute('d', 'M45 70 C50 85 50 85 55 70 Z');
   rocketEl.append(body, leftFin, rightFin, windowC, flame);
 
-  bodyEl.append(rocketEl, priceEl, changeEl);
+  // Place numeric badge above the rocket
+  bodyEl.append(changeEl, rocketEl, priceEl);
   bubbleEl.append(header, bodyEl);
   (document.body || document.documentElement).appendChild(bubbleEl);
 
