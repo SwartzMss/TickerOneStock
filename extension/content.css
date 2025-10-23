@@ -110,21 +110,7 @@
 
 /* Always show change */
 
-.tos-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: rgba(100, 116, 139, 0.85);
-}
-
-.tos-bubble.tos-dark .tos-footer {
-  color: rgba(148, 163, 184, 0.8);
-}
-
-.tos-provider {
-  font-style: italic;
-}
+/* footer and provider removed to keep bubble clean */
 
 /* reopen button removed; toggling via action icon / hotkey */
 

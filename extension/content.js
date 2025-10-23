@@ -123,10 +123,6 @@ function updateQuoteDisplay() {
     changeEl.textContent = showPercent ? pctVal : absVal;
     changeEl.style.color = quote.color || '';
   }
-  const providerEl = bubbleEl.querySelector('.tos-provider');
-  if (providerEl && quote?.provider) {
-    providerEl.textContent = `数据源：${quote.provider}`;
-  }
   if (timeEl) {
     const date = new Date(quote.updatedAt || Date.now());
     if (quote.time && !Number.isNaN(Date.parse(quote.time.replace(/-/g, '/')))) {
@@ -277,14 +273,7 @@ function createBubble() {
   changeEl.className = 'tos-change';
   changeEl.textContent = '--';
 
-  const footer = document.createElement('div');
-  footer.className = 'tos-footer';
-
-  const providerEl = document.createElement('span');
-  providerEl.className = 'tos-provider';
-  footer.appendChild(providerEl);
-
-  bodyEl.append(priceEl, changeEl, footer);
+  bodyEl.append(priceEl, changeEl);
   bubbleEl.append(header, bodyEl);
   (document.body || document.documentElement).appendChild(bubbleEl);
 
@@ -303,20 +292,11 @@ function createBubble() {
   setupChangeCycle();
   updateAdaptiveFontSize(bubbleState.bubbleSize.width);
 
-  if (quote?.provider && providerEl) {
-    providerEl.textContent = `数据源：${quote.provider}`;
-  }
 }
 
 function handleQuoteUpdate(message) {
   if (message.type !== 'QUOTE_UPDATE') return;
   quote = message.payload;
-  if (bubbleEl) {
-    const providerEl = bubbleEl.querySelector('.tos-provider');
-    if (providerEl && quote?.provider) {
-      providerEl.textContent = `数据源：${quote.provider}`;
-    }
-  }
   updateQuoteDisplay();
 }
 
