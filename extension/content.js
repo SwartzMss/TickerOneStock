@@ -57,8 +57,10 @@ function applyBubbleSize() {
   if (bubbleEl.classList.contains('tos-round')) {
     // enforce circle by making height = width
     bubbleEl.style.height = `${width}px`;
+    updateAdaptiveFontSize(width);
   } else {
     bubbleEl.style.height = bubbleState.collapsed ? '' : `${height}px`;
+    updateAdaptiveFontSize(height);
   }
 }
 
@@ -153,6 +155,15 @@ function setupChangeCycle() {
     showPercent = !showPercent;
     updateQuoteDisplay();
   }, 3000);
+}
+
+function updateAdaptiveFontSize(diameter) {
+  if (!changeEl) return;
+  const d = Math.max(20, Number(diameter) || 120);
+  // Scale roughly with diameter; clamp for readability
+  const px = Math.max(12, Math.min(32, Math.round(d * 0.2)));
+  changeEl.style.fontSize = `${px}px`;
+  changeEl.style.lineHeight = '1.05';
 }
 
 function persistBubbleState(updates) {
@@ -305,6 +316,7 @@ function createBubble() {
   updateOpacity();
   updateQuoteDisplay();
   setupChangeCycle();
+  updateAdaptiveFontSize(bubbleState.bubbleSize.width);
 
   if (quote?.provider && providerEl) {
     providerEl.textContent = `数据源：${quote.provider}`;
