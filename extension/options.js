@@ -8,8 +8,6 @@ const DEFAULT_CONFIG = {
 
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
-const opacityInput = document.getElementById('bubbleOpacity');
-const opacityValue = document.getElementById('opacityValue');
 const resetBubbleBtn = document.getElementById('reset-bubble');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
@@ -41,18 +39,14 @@ async function loadConfig() {
 
   form.symbol.value = config.symbol;
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
-  form.theme.value = config.theme || 'auto';
-  opacityInput.value = config.bubbleOpacity;
-  opacityValue.textContent = Number(config.bubbleOpacity).toFixed(2);
 }
 
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
   return {
     symbol: form.symbol.value.trim(),
-    bubbleOpacity: Number(opacityInput.value),
     bubbleSize: { width: bubbleWidth },
-    theme: form.theme.value
+    // 透明度和主题自动
   };
 }
 
@@ -67,9 +61,7 @@ async function handleSubmit(event) {
   showStatus('已保存，后台将在下个周期使用新配置刷新。');
 }
 
-opacityInput.addEventListener('input', () => {
-  opacityValue.textContent = Number(opacityInput.value).toFixed(2);
-});
+// 透明度与主题已自动，无需交互
 
 resetBubbleBtn.addEventListener('click', async () => {
   if (!hasChrome) {
