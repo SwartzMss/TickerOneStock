@@ -1,7 +1,6 @@
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
   refreshInterval: 10,
-  quoteProvider: 'tencent',
   bubbleOpacity: 1,
   bubbleSize: { width: 120, height: 120 },
   bubblePosition: { x: 24, y: 24 },
@@ -240,7 +239,7 @@ async function fetchQuote() {
     }
   }
 
-  const prefer = lastSuccessfulProvider || currentConfig.quoteProvider || 'tencent';
+  const prefer = lastSuccessfulProvider || 'tencent';
   const fallback = prefer === 'tencent' ? 'sina' : 'tencent';
   try {
     const q = await fetchFromProvider(prefer);
