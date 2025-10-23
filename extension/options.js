@@ -40,12 +40,30 @@ function showStatus(message, type = 'success') {
 }
 
 async function loadConfig() {
-  const keys = [...Object.keys(DEFAULT_CONFIG)];
+  const keys = [...Object.keys(DEFAULT_CONFIG), 'symbolName'];
   const syncValues = await storageGet('sync', keys);
   const config = { ...DEFAULT_CONFIG, ...syncValues };
   if (DEBUG) console.log('[options] loadConfig syncValues=', syncValues);
 
-  form.symbol.value = config.symbol || '';
+  // Display as "Name  shxxxxxx" if we can resolve a name from local index or stored symbolName
+  if (config.symbol && /^(sh|sz)\d{6}$/i.test(config.symbol)) {
+    if (syncValues.symbolName) {
+      form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
+    } else {
+      try {
+        const nm = await resolveNameForSymbol(config.symbol);
+        form.symbol.value = nm ? `${nm}  ${config.symbol}` : (config.symbol || '');
+        // Lightweight migration: persist symbolName if we could resolve it
+        if (nm && hasChrome) {
+          try { await storageSet('sync', { symbolName: nm }); } catch (_) {}
+        }
+      } catch (_) {
+        form.symbol.value = config.symbol || '';
+      }
+    }
+  } else {
+    form.symbol.value = config.symbol || '';
+  }
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
   // eastmoney status
   if (hasChrome && eastmoneyStatusEl) {
@@ -79,16 +97,16 @@ async function handleSubmit(event) {
     const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
     form.symbol.value = resolvedName ? `${resolvedName}  ${normalized}` : normalized;
     if (DEBUG) console.log('[options] normalized before save =', { normalized, resolvedName });
+    // Save normalized symbol + optional symbolName for fast display
+    const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
+    await storageSet('sync', { symbol: normalized, symbolName: resolvedName, bubbleSize: { width: bubbleWidth } });
+    showStatus('已保存，后台将在下个周期使用新配置刷新。');
+    return;
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
     if (DEBUG) console.log('[options] normalize failed', e);
     return;
   }
-  // Save only normalized code and bubble width
-  const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
-  const finalSymbol = (await ensureNormalizedBeforeSave()).symbol;
-  await storageSet('sync', { symbol: finalSymbol, bubbleSize: { width: bubbleWidth } });
-  showStatus('已保存，后台将在下个周期使用新配置刷新。');
 }
 
 // 透明度与主题已自动，无需交互
