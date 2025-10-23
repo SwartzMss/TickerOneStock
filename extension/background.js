@@ -416,23 +416,7 @@ function scheduleDailyRefresh() {
   chrome.alarms.create('refreshIndexDaily', { when: next.getTime(), periodInMinutes: 24 * 60 });
 }
 
-async function fetchAndCacheIndexFromUrl(url) {
-  if (!url) return false;
-  try {
-    const resp = await fetch(url, { cache: 'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const list = await resp.json();
-    const cleaned = Array.isArray(list)
-      ? list.map((x) => ({ market: String(x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
-            .filter((x) => /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code) && x.name)
-      : [];
-    if (!cleaned.length) throw new Error('empty or invalid index');
-    await chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() });
-    return true;
-  } catch (_) {
-    return false;
-  }
-}
+// removed legacy fetchAndCacheIndexFromUrl
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm?.name !== 'refreshIndexDaily') return;
@@ -443,30 +427,32 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 async function refreshIndexFromEastmoney() {
   try {
     const url = 'https://push2.eastmoney.com/api/qt/clist/get';
-    const params = {
-      pn: 1,
-      pz: 5000,
-      po: 1,
-      np: 1,
-      fltt: 2,
-      invt: 2,
-      fid: 'f3',
-      fields: 'f12,f14',
-      fs: 'm:1 t:2,m:0 t:6' // 上证/深证 A 股
-    };
-    const qs = new URLSearchParams(params).toString();
-    const resp = await fetch(`${url}?${qs}`, { cache: 'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
-    const list = (json?.data?.diff || []).map((x) => ({ code: String(x.f12 || '').trim(), name: String(x.f14 || '').trim() }));
-    const cleaned = list
+    const segments = ['m:1 t:2', 'm:1 t:23', 'm:0 t:6', 'm:0 t:80', 'm:0 t:81'];
+    const all = [];
+    for (const fs of segments) {
+      let pn = 1;
+      const pz = 500;
+      for (let i = 0; i < 50; i++) {
+        const params = { pn, pz, po: 1, np: 1, fltt: 2, invt: 2, fid: 'f3', fields: 'f12,f14', fs };
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(`${url}?${qs}`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+        const diff = json?.data?.diff || [];
+        if (!Array.isArray(diff) || diff.length === 0) break;
+        for (const x of diff) {
+          const code = String(x?.f12 || '').trim();
+          const name = String(x?.f14 || '').trim();
+          if (/^\d{6}$/.test(code) && name) {
+            all.push({ code, name });
+          }
+        }
+        pn += 1;
+      }
+    }
+    const cleaned = all
       .filter((x) => /^\d{6}$/.test(x.code) && x.name)
-      .map((x) => ({
-        market: x.code.startsWith('6') ? 'sh' : 'sz',
-        code: x.code,
-        name: x.name
-      }));
-    // de-duplicate by market+code
+      .map((x) => ({ market: x.code.startsWith('6') ? 'sh' : 'sz', code: x.code, name: x.name }));
     const uniqMap = new Map();
     for (const it of cleaned) {
       uniqMap.set(`${it.market}${it.code}`, it);
