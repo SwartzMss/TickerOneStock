@@ -9,7 +9,6 @@ const DEFAULT_CONFIG = {
 const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
-const selectedSummary = document.getElementById('selected-summary');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 
 function storageGet(area, keys) {
@@ -38,22 +37,29 @@ async function loadConfig() {
   const syncValues = await storageGet('sync', Object.keys(DEFAULT_CONFIG));
   const config = { ...DEFAULT_CONFIG, ...syncValues };
 
-  form.symbol.value = config.symbol;
-  form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
   if (config.symbol && syncValues.symbolName) {
-    selectedSummary.textContent = `已选择：${syncValues.symbolName}  ${config.symbol}`;
-    selectedSummary.dataset.name = syncValues.symbolName;
+    form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
   } else {
-    selectedSummary.textContent = '';
-    delete selectedSummary.dataset.name;
+    form.symbol.value = config.symbol;
   }
+  form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
+}
+
+function parseCombinedSymbol(input) {
+  const val = String(input || '').trim();
+  const m = val.match(/(sh|sz)\d{6}/i);
+  if (!m) return { symbol: val, name: undefined };
+  const sym = m[0].toLowerCase();
+  const name = val.slice(0, m.index).trim() || undefined;
+  return { symbol: sym, name };
 }
 
 function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
+  const parsed = parseCombinedSymbol(form.symbol.value);
   return {
-    symbol: form.symbol.value.trim(),
-    symbolName: selectedSummary.dataset.name || undefined,
+    symbol: parsed.symbol,
+    symbolName: parsed.name,
     bubbleSize: { width: bubbleWidth },
     // 透明度和主题自动
   };
@@ -68,11 +74,7 @@ async function handleSubmit(event) {
   // Ensure we save a normalized symbol (sh/sz+code)
   try {
     const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
-    form.symbol.value = normalized;
-    if (resolvedName) {
-      selectedSummary.textContent = `已选择：${resolvedName}  ${normalized}`;
-      selectedSummary.dataset.name = resolvedName;
-    }
+    form.symbol.value = resolvedName ? `${resolvedName}  ${normalized}` : normalized;
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
     return;
