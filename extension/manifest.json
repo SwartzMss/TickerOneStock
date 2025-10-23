@@ -19,10 +19,6 @@
   },
   "commands": {
     "toggle-enabled": {
-      "suggested_key": {
-        "default": "Alt+S",
-        "mac": "Alt+S"
-      },
       "description": "切换显示/隐藏气泡"
     }
   },
