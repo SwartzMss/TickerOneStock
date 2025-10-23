@@ -1,4 +1,4 @@
-const DEFAULT_INDEX_URL = 'https://raw.githubusercontent.com/your-name/TickerOneStock/main/extension/stocks.json';
+// Local-only suggest; no default remote index URL
 
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
@@ -12,10 +12,9 @@ const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
 const selectedSummary = document.getElementById('selected-summary');
-const refreshIndexBtn = document.getElementById('refresh-index');
-const indexInfo = document.getElementById('index-info');
 const btnRefreshEastmoney = document.getElementById('btn-refresh-eastmoney');
 const eastmoneyStatusEl = document.getElementById('eastmoney-status');
+const btnExportIndex = document.getElementById('btn-export-index');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 const DEBUG = true;
 
@@ -42,19 +41,13 @@ function showStatus(message, type = 'success') {
 }
 
 async function loadConfig() {
-  const keys = [...Object.keys(DEFAULT_CONFIG), 'symbolName', 'indexUrl'];
+  const keys = [...Object.keys(DEFAULT_CONFIG)];
   const syncValues = await storageGet('sync', keys);
   const config = { ...DEFAULT_CONFIG, ...syncValues };
   if (DEBUG) console.log('[options] loadConfig syncValues=', syncValues);
 
-  if (config.symbol && /^(sh|sz)\d{6}$/i.test(config.symbol) && syncValues.symbolName) {
-    form.symbol.value = `${syncValues.symbolName}  ${config.symbol}`;
-  } else {
-    form.symbol.value = config.symbol || '';
-  }
+  form.symbol.value = config.symbol || '';
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
-  // index url
-  if (form.indexUrl) form.indexUrl.value = syncValues.indexUrl || DEFAULT_INDEX_URL || '';
   // eastmoney status
   if (hasChrome && eastmoneyStatusEl) {
     const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndexUpdatedAt', 'stockIndexLastStatus', 'stockIndexLastError', 'stockIndex'], resolve));
@@ -111,21 +104,10 @@ async function handleSubmit(event) {
     if (DEBUG) console.log('[options] normalize failed', e);
     return;
   }
-  // Build config directly using normalized result to avoid mis-parsing
+  // Save only normalized code and bubble width
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
-  const displayVal = String(form.symbol.value || '');
-  // Try to split display "name  shxxxxxx" back to components
-  const parsed = parseCombinedSymbol(displayVal);
-  const symbolName = parsed.name; // may be undefined; we also fallback to resolvedName in ensureNormalizedBeforeSave
-  const finalName = symbolName || (displayVal.includes('  ') ? displayVal.split('  ')[0].trim() : undefined);
-  const finalSymbol = (await ensureNormalizedBeforeSave()).symbol; // guaranteed normalized
-  const config = {
-    symbol: finalSymbol,
-    symbolName: finalName,
-    bubbleSize: { width: bubbleWidth },
-    indexUrl: form.indexUrl ? (form.indexUrl.value || undefined) : undefined
-  };
-  await storageSet('sync', config);
+  const finalSymbol = (await ensureNormalizedBeforeSave()).symbol;
+  await storageSet('sync', { symbol: finalSymbol, bubbleSize: { width: bubbleWidth } });
   showStatus('已保存，后台将在下个周期使用新配置刷新。');
 }
 
@@ -155,32 +137,7 @@ async function ensureStockIndex() {
     const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndex', 'stockIndexUpdatedAt'], resolve));
     if (Array.isArray(local.stockIndex) && local.stockIndex.length) {
       stockIndex = local.stockIndex;
-      if (indexInfo && local.stockIndexUpdatedAt) {
-        const dt = new Date(local.stockIndexUpdatedAt);
-        indexInfo.textContent = `索引本地缓存，共 ${stockIndex.length} 条，更新时间 ${dt.toLocaleString()}`;
-      }
       return stockIndex;
-    }
-    // If no cache but indexUrl configured, try once now
-    const { indexUrl } = await new Promise((resolve) => chrome.storage.sync.get(['indexUrl'], resolve));
-    const sourceUrl = indexUrl || DEFAULT_INDEX_URL;
-    if (sourceUrl) {
-      try {
-        const resp = await fetch(sourceUrl, { cache: 'no-store' });
-        if (resp.ok) {
-          const list = await resp.json();
-          const cleaned = Array.isArray(list)
-            ? list.map((x) => ({ market: String(x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
-                  .filter((x) => /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code) && x.name)
-            : [];
-          if (cleaned.length) {
-            await new Promise((resolve) => chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() }, resolve));
-            stockIndex = cleaned;
-            if (indexInfo) indexInfo.textContent = `索引本地缓存，共 ${cleaned.length} 条，更新时间 ${new Date().toLocaleString()}`;
-            return stockIndex;
-          }
-        }
-      } catch (_) {}
     }
   }
   // 2) Fallback to packaged stocks.json
@@ -188,10 +145,8 @@ async function ensureStockIndex() {
     const url = chrome.runtime.getURL('stocks.json');
     const resp = await fetch(url, { cache: 'no-store' });
     stockIndex = await resp.json();
-    if (indexInfo) indexInfo.textContent = `使用内置索引，共 ${stockIndex.length} 条`;
   } catch (_) {
     stockIndex = [];
-    if (indexInfo) indexInfo.textContent = '未能加载索引';
   }
   return stockIndex;
 }
@@ -250,21 +205,13 @@ function renderSearchResults(list) {
 
 async function doSearch() {
   const raw = form.symbol.value.trim();
-  if (raw.length < 2) {
+  if (raw.length < 1) {
     searchResults.style.display = 'none';
     searchResults.innerHTML = '';
     return;
   }
-  // Prefer live API; fallback to local index
-  const apiResults = await fetchSinaSuggest(raw).catch(() => []);
-  if (apiResults && apiResults.length) { renderSearchResults(apiResults); return; }
-  const apiResults2 = await fetchTencentSuggest(raw).catch(() => []);
-  if (apiResults2 && apiResults2.length) { renderSearchResults(apiResults2); return; }
+  // Local-only suggest using cached full index
   const idx = await ensureStockIndex();
-  if (!raw) {
-    renderSearchResults(idx.slice(0, 20));
-    return;
-  }
   const key = raw.toLowerCase();
   const results = idx.filter((s) => s.name.toLowerCase().includes(key) || s.code.includes(key));
   renderSearchResults(results);
@@ -313,6 +260,7 @@ form.symbol.addEventListener('keydown', (e) => {
 
 // Live API suggest (Sina)
 async function fetchSinaSuggest(key) {
+  return [];
   const q = (key || form.symbol.value || '').trim();
   if (!q) return [];
   const url = `https://suggest3.sinajs.cn/suggest/type=11,12,13,14&key=${encodeURIComponent(q)}`;
@@ -337,6 +285,7 @@ async function fetchSinaSuggest(key) {
 
 // Live API suggest (Tencent)
 async function fetchTencentSuggest(key) {
+  return [];
   const q = (key || form.symbol.value || '').trim();
   if (!q) return [];
   const url = `https://smartbox.gtimg.cn/s3/?t=all&q=${encodeURIComponent(q)}`;
@@ -388,10 +337,9 @@ form.symbol.addEventListener('keydown', (e) => {
 async function ensureNormalizedBeforeSave() {
   const val = form.symbol.value.trim();
   if (/^(sh|sz)\d{6}$/i.test(val)) {
-    const name = await resolveNameForSymbol(val).catch(() => undefined);
-    return { symbol: val.toLowerCase(), name };
+    return { symbol: val.toLowerCase(), name: undefined };
   }
-  const first = searchResults.querySelector('.search-item');
+  const first = searchResults?.querySelector('.search-item');
   if (first) {
     const sym = first.getAttribute('data-sym');
     const nm = first.getAttribute('data-name') || '';
@@ -399,6 +347,7 @@ async function ensureNormalizedBeforeSave() {
   }
   const idx = await ensureStockIndex();
   const key = val.toLowerCase();
+  // exact name match or exact 6-digit code match
   const match = idx.find((s) => s.name.toLowerCase() === key || s.code === val);
   if (match) {
     const sym = `${match.market}${match.code}`.toLowerCase();
@@ -406,36 +355,12 @@ async function ensureNormalizedBeforeSave() {
   }
   const sym2 = normalizeCodeToSymbol(val);
   if (sym2) {
-    const name = await resolveNameForSymbol(sym2).catch(() => undefined);
-    return { symbol: sym2, name };
-  }
-  const api = await fetchSinaSuggest(val).catch(() => []);
-  if (api && api.length) {
-    const a = api[0];
-    const sym = `${a.market}${a.code}`.toLowerCase();
-    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: a.name };
-  }
-  const api2 = await fetchTencentSuggest(val).catch(() => []);
-  if (api2 && api2.length) {
-    const a2 = api2[0];
-    const sym = `${a2.market}${a2.code}`.toLowerCase();
-    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: a2.name };
+    return { symbol: sym2, name: undefined };
   }
   throw new Error('no-match');
 }
 
 async function resolveNameForSymbol(sym) {
-  const code = sym.slice(2);
-  let list = await fetchSinaSuggest(code).catch(() => []);
-  if (list && list.length) {
-    const hit = list.find((x) => `${x.market}${x.code}`.toLowerCase() === sym.toLowerCase());
-    if (hit) return hit.name;
-  }
-  list = await fetchTencentSuggest(code).catch(() => []);
-  if (list && list.length) {
-    const hit = list.find((x) => `${x.market}${x.code}`.toLowerCase() === sym.toLowerCase());
-    if (hit) return hit.name;
-  }
   const idx = await ensureStockIndex();
   const item = idx.find((s) => `${s.market}${s.code}`.toLowerCase() === sym.toLowerCase());
   return item?.name;
@@ -444,8 +369,8 @@ async function resolveNameForSymbol(sym) {
 // --- Manual refresh for full index ---
 async function refreshStockIndex() {
   if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
-  const preset = (form.indexUrl && form.indexUrl.value) || DEFAULT_INDEX_URL || '';
-  const url = window.prompt('请输入股票索引 JSON 的 URL（同源或支持 CORS）：', preset);
+  showStatus('该功能已移除', 'error');
+  return;
   if (!url) return;
   try {
     const resp = await fetch(url, { cache: 'no-store' });
@@ -457,7 +382,7 @@ async function refreshStockIndex() {
       .filter((x) => x.market && x.code && x.name && /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code));
     await new Promise((resolve) => chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() }, resolve));
     stockIndex = cleaned;
-    if (indexInfo) indexInfo.textContent = `索引本地缓存，共 ${cleaned.length} 条，更新时间 ${new Date().toLocaleString()}`;
+    // legacy indexInfo removed
     showStatus(`已刷新索引，共 ${cleaned.length} 条`);
   } catch (e) {
     console.error('刷新索引失败', e);
@@ -465,8 +390,32 @@ async function refreshStockIndex() {
   }
 }
 
-refreshIndexBtn?.addEventListener('click', refreshStockIndex);
+// legacy refresh button removed
 
+// Manual refresh via Eastmoney
+// duplicate handler removed
+
+// Export local index as JSON
+btnExportIndex?.addEventListener('click', async () => {
+  if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
+  const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndex'], resolve));
+  const list = Array.isArray(local.stockIndex) ? local.stockIndex : [];
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const y = String(now.getFullYear());
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const filename = `stocks-${y}${m}${d}.json`;
+  try {
+    await chrome.downloads.download({ url, filename, saveAs: true });
+    showStatus('已导出 JSON 文件');
+  } catch (e) {
+    showStatus('导出失败，请检查下载权限', 'error');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+});
 // Manual refresh via Eastmoney
 btnRefreshEastmoney?.addEventListener('click', () => {
   if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }

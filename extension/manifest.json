@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "alarms"
+    "alarms",
+    "downloads"
   ],
   "host_permissions": [
     "https://qt.gtimg.cn/*",

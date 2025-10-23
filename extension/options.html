@@ -15,13 +15,15 @@
       <form id="options-form" class="card">
         <section class="field">
           <label for="symbol">标的</label>
-          <input id="symbol" name="symbol" placeholder="请手动输入标准代码，如：sh600519 或 sz000001" required />
-          <p class="field__hint">仅支持手动输入标准代码，格式必须为 sh/sz + 6 位数字，例如 sh600519。</p>
+          <input id="symbol" name="symbol" placeholder="输入中文或代码（支持联想），如：茅台 / sh600519" required />
+          <div id="search-results" class="search-results" role="listbox" aria-label="匹配结果"></div>
+          <p class="field__hint">输入即联想；选中后输入框显示“中文名 标准代码”，保存时仅写入标准代码。</p>
         </section>
         <section class="field">
           <label>全量股票索引</label>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button type="button" id="btn-refresh-eastmoney" class="btn">手动获取/更新</button>
+            <button type="button" id="btn-export-index" class="btn">导出为 JSON</button>
             <small id="eastmoney-status" class="muted">状态未知</small>
           </div>
           <p class="field__hint">后台每天 06:00 会自动尝试从东方财富 push2 拉取全量列表，并缓存到本地（仅扩展本机）。</p>
