@@ -22,9 +22,9 @@
         <section class="field">
           <label>全量股票索引</label>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="btn-refresh-eastmoney" class="btn">手动获取/更新</button>
-            <button type="button" id="btn-export-index" class="btn">导出为 JSON</button>
-            <small id="eastmoney-status" class="muted">状态未知</small>
+            <button type="button" id="btn-refresh-eastmoney" class="btn">⟳ 手动获取/更新</button>
+            <button type="button" id="btn-export-index" class="btn">⬇ 导出为 JSON</button>
+            <small id="eastmoney-status" class="muted status-indicator" data-status="unknown">状态未知</small>
           </div>
           <p class="field__hint">后台每天 06:00 会自动尝试从东方财富 push2 拉取全量列表，并缓存到本地（仅扩展本机）。</p>
         </section>

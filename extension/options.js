@@ -74,12 +74,15 @@ async function loadConfig() {
     if (status === 'success') {
       eastmoneyStatusEl.textContent = `成功，${when}，共 ${cnt} 条`;
       eastmoneyStatusEl.style.color = '';
+      eastmoneyStatusEl.dataset.status = 'success';
     } else if (status === 'fail') {
       eastmoneyStatusEl.textContent = `失败，${when}，${local.stockIndexLastError || ''}`;
-      eastmoneyStatusEl.style.color = 'rgba(239, 68, 68, 0.9)';
+      eastmoneyStatusEl.style.color = '';
+      eastmoneyStatusEl.dataset.status = 'fail';
     } else {
       eastmoneyStatusEl.textContent = `未知，${when}`;
       eastmoneyStatusEl.style.color = '';
+      eastmoneyStatusEl.dataset.status = 'unknown';
     }
   }
 }
