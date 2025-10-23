@@ -258,54 +258,7 @@ form.symbol.addEventListener('keydown', (e) => {
   }
 });
 
-// Live API suggest (Sina)
-async function fetchSinaSuggest(key) {
-  return [];
-  const q = (key || form.symbol.value || '').trim();
-  if (!q) return [];
-  const url = `https://suggest3.sinajs.cn/suggest/type=11,12,13,14&key=${encodeURIComponent(q)}`;
-  const resp = await fetch(url, { cache: 'no-store', headers: { 'Content-Type': 'text/plain; charset=gbk' } });
-  const buf = await resp.arrayBuffer();
-  let decoder;
-  try { decoder = new TextDecoder('gbk'); } catch (_) { decoder = new TextDecoder('gb18030'); }
-  const text = decoder.decode(buf);
-  const m = text.match(/="([^"]*)"/);
-  if (!m) return [];
-  const entries = m[1].split(';').filter(Boolean);
-  const list = entries.map((line) => {
-    const parts = line.split(',');
-    const sym = (parts[0] || '').trim().toLowerCase();
-    const name = (parts[4] || parts[1] || '').trim();
-    const market = sym.slice(0, 2);
-    const code = sym.slice(2);
-    return market && code ? { market, code, name } : null;
-  }).filter(Boolean);
-  return list;
-}
-
-// Live API suggest (Tencent)
-async function fetchTencentSuggest(key) {
-  return [];
-  const q = (key || form.symbol.value || '').trim();
-  if (!q) return [];
-  const url = `https://smartbox.gtimg.cn/s3/?t=all&q=${encodeURIComponent(q)}`;
-  const resp = await fetch(url, { cache: 'no-store' });
-  const text = await resp.text();
-  // Expected like: v_hint="sz000001,平安银行,...;sh600519,贵州茅台,...;"
-  const m = text.match(/="([^"]*)"/);
-  if (!m) return [];
-  const entries = m[1].split(';').filter(Boolean);
-  const list = entries.map((line) => {
-    const parts = line.split(',');
-    const sym = (parts[0] || '').trim().toLowerCase();
-    const name = (parts[1] || '').trim();
-    if (!/^((sh|sz)\d{6})$/.test(sym)) return null;
-    const market = sym.slice(0, 2);
-    const code = sym.slice(2);
-    return { market, code, name };
-  }).filter(Boolean);
-  return list;
-}
+// Online suggest removed
 
 // Debounced live search on input
 let searchTimer = null;
@@ -366,29 +319,7 @@ async function resolveNameForSymbol(sym) {
   return item?.name;
 }
 
-// --- Manual refresh for full index ---
-async function refreshStockIndex() {
-  if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
-  showStatus('该功能已移除', 'error');
-  return;
-  if (!url) return;
-  try {
-    const resp = await fetch(url, { cache: 'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const list = await resp.json();
-    if (!Array.isArray(list)) throw new Error('索引格式非数组');
-    const cleaned = list
-      .map((x) => ({ market: (x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
-      .filter((x) => x.market && x.code && x.name && /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code));
-    await new Promise((resolve) => chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() }, resolve));
-    stockIndex = cleaned;
-    // legacy indexInfo removed
-    showStatus(`已刷新索引，共 ${cleaned.length} 条`);
-  } catch (e) {
-    console.error('刷新索引失败', e);
-    showStatus('刷新索引失败，请检查 URL 或网络', 'error');
-  }
-}
+// Legacy external refresh removed
 
 // legacy refresh button removed
 

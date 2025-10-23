@@ -12,10 +12,7 @@
   "host_permissions": [
     "https://qt.gtimg.cn/*",
     "https://hq.sinajs.cn/*",
-    "https://suggest3.sinajs.cn/*",
-    "https://smartbox.gtimg.cn/*",
-    "https://raw.githubusercontent.com/*",
-    "https://cdn.jsdelivr.net/*",
+    
     "https://push2.eastmoney.com/*"
   ],
   "background": {
