@@ -169,6 +169,11 @@ function renderSearchResults(list) {
 
 async function doSearch() {
   const raw = form.symbol.value.trim();
+  if (raw.length < 2) {
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
+    return;
+  }
   // Prefer live API; fallback to local index
   const apiResults = await fetchSinaSuggest(raw).catch(() => []);
   if (apiResults && apiResults.length) { renderSearchResults(apiResults); return; }
@@ -190,7 +195,7 @@ searchResults?.addEventListener('click', (e) => {
   const sym = item.getAttribute('data-sym');
   const nm = item.getAttribute('data-name') || '';
   if (sym) {
-    form.symbol.value = sym;
+    form.symbol.value = nm ? `${nm}  ${sym}` : sym;
     selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
     if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
     showStatus(`已选择 ${nm || sym}`);
@@ -208,7 +213,7 @@ form.symbol.addEventListener('keydown', (e) => {
         const sym = first.getAttribute('data-sym');
         const nm = first.getAttribute('data-name') || '';
         if (sym) {
-          form.symbol.value = sym;
+          form.symbol.value = nm ? `${nm}  ${sym}` : sym;
           searchResults.style.display = 'none';
           selectedSummary.textContent = nm ? `已选择：${nm}  ${sym}` : `已选择：${sym}`;
           if (nm) selectedSummary.dataset.name = nm; else delete selectedSummary.dataset.name;
@@ -275,6 +280,24 @@ form.symbol.addEventListener('input', () => {
   searchTimer = setTimeout(() => {
     doSearch().catch(() => {});
   }, 250);
+});
+
+// Hide dropdown on outside click or ESC/blur
+document.addEventListener('click', (e) => {
+  const inside = e.target.closest && (e.target.closest('#search-results') || e.target.closest('#symbol'));
+  if (!inside) {
+    searchResults.style.display = 'none';
+  }
+});
+
+form.symbol.addEventListener('blur', () => {
+  setTimeout(() => { searchResults.style.display = 'none'; }, 150);
+});
+
+form.symbol.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    searchResults.style.display = 'none';
+  }
 });
 
 async function ensureNormalizedBeforeSave() {
