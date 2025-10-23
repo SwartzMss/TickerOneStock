@@ -18,6 +18,15 @@
           <input id="symbol" name="symbol" placeholder="如：贵州茅台  sh600519（自动匹配）" required />
           <div id="search-results" class="search-results" role="listbox" aria-label="匹配结果"></div>
           <p class="field__hint">输入即联想；选中后输入框直接显示“中文名 标准代码”，保存写入标准代码。</p>
+          <div class="field__actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <button type="button" id="refresh-index" class="btn">刷新股票索引</button>
+            <small id="index-info" class="muted"></small>
+          </div>
+        </section>
+        <section class="field">
+          <label for="indexUrl">索引来源地址（可选）</label>
+          <input id="indexUrl" name="indexUrl" placeholder="例如：https://example.com/cn-stocks.json（需支持 CORS）" />
+          <p class="field__hint">每日清晨会自动从此地址刷新全量股票索引；为空则仅使用内置索引和在线联想。</p>
         </section>
         <section class="field">
           <label for="bubbleWidth">气泡大小（直径 px）</label>

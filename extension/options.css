@@ -185,3 +185,7 @@ input[type='range'] {
     color: rgba(74, 222, 128, 0.9);
   }
 }
+
+.muted {
+  color: rgba(100,116,139,0.9);
+}

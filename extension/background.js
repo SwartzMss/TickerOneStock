@@ -341,6 +341,9 @@ async function init() {
   }
   updateActionIcon(enabled);
   startPolling();
+  // schedule daily index refresh at 06:00 local
+  try { await chrome.alarms.clear('refreshIndexDaily'); } catch (_) {}
+  scheduleDailyRefresh();
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -397,3 +400,37 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 init();
+
+// --- Daily index refresh support ---
+function scheduleDailyRefresh() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(6, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  chrome.alarms.create('refreshIndexDaily', { when: next.getTime(), periodInMinutes: 24 * 60 });
+}
+
+async function fetchAndCacheIndexFromUrl(url) {
+  if (!url) return false;
+  try {
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const list = await resp.json();
+    const cleaned = Array.isArray(list)
+      ? list.map((x) => ({ market: String(x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
+            .filter((x) => /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code) && x.name)
+      : [];
+    if (!cleaned.length) throw new Error('empty or invalid index');
+    await chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm?.name !== 'refreshIndexDaily') return;
+  const { indexUrl } = await new Promise((resolve) => chrome.storage.sync.get(['indexUrl'], resolve));
+  const fallback = 'https://raw.githubusercontent.com/your-name/TickerOneStock/main/extension/stocks.json';
+  await fetchAndCacheIndexFromUrl(indexUrl || fallback);
+});

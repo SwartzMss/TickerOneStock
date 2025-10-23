@@ -1,3 +1,5 @@
+const DEFAULT_INDEX_URL = 'https://raw.githubusercontent.com/your-name/TickerOneStock/main/extension/stocks.json';
+
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
   bubbleOpacity: 1,
@@ -10,6 +12,8 @@ const form = document.getElementById('options-form');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
 const selectedSummary = document.getElementById('selected-summary');
+const refreshIndexBtn = document.getElementById('refresh-index');
+const indexInfo = document.getElementById('index-info');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 const DEBUG = true;
 
@@ -36,7 +40,7 @@ function showStatus(message, type = 'success') {
 }
 
 async function loadConfig() {
-  const keys = [...Object.keys(DEFAULT_CONFIG), 'symbolName'];
+  const keys = [...Object.keys(DEFAULT_CONFIG), 'symbolName', 'indexUrl'];
   const syncValues = await storageGet('sync', keys);
   const config = { ...DEFAULT_CONFIG, ...syncValues };
   if (DEBUG) console.log('[options] loadConfig syncValues=', syncValues);
@@ -47,6 +51,8 @@ async function loadConfig() {
     form.symbol.value = config.symbol || '';
   }
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
+  // index url
+  if (form.indexUrl) form.indexUrl.value = syncValues.indexUrl || DEFAULT_INDEX_URL || '';
 }
 
 function parseCombinedSymbol(input) {
@@ -86,7 +92,20 @@ async function handleSubmit(event) {
     if (DEBUG) console.log('[options] normalize failed', e);
     return;
   }
-  const config = serializeForm();
+  // Build config directly using normalized result to avoid mis-parsing
+  const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
+  const displayVal = String(form.symbol.value || '');
+  // Try to split display "name  shxxxxxx" back to components
+  const parsed = parseCombinedSymbol(displayVal);
+  const symbolName = parsed.name; // may be undefined; we also fallback to resolvedName in ensureNormalizedBeforeSave
+  const finalName = symbolName || (displayVal.includes('  ') ? displayVal.split('  ')[0].trim() : undefined);
+  const finalSymbol = (await ensureNormalizedBeforeSave()).symbol; // guaranteed normalized
+  const config = {
+    symbol: finalSymbol,
+    symbolName: finalName,
+    bubbleSize: { width: bubbleWidth },
+    indexUrl: form.indexUrl ? (form.indexUrl.value || undefined) : undefined
+  };
   await storageSet('sync', config);
   showStatus('已保存，后台将在下个周期使用新配置刷新。');
 }
@@ -112,12 +131,48 @@ loadConfig()
 let stockIndex = null;
 async function ensureStockIndex() {
   if (stockIndex) return stockIndex;
+  // 1) Try cached in local storage
+  if (hasChrome) {
+    const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndex', 'stockIndexUpdatedAt'], resolve));
+    if (Array.isArray(local.stockIndex) && local.stockIndex.length) {
+      stockIndex = local.stockIndex;
+      if (indexInfo && local.stockIndexUpdatedAt) {
+        const dt = new Date(local.stockIndexUpdatedAt);
+        indexInfo.textContent = `索引本地缓存，共 ${stockIndex.length} 条，更新时间 ${dt.toLocaleString()}`;
+      }
+      return stockIndex;
+    }
+    // If no cache but indexUrl configured, try once now
+    const { indexUrl } = await new Promise((resolve) => chrome.storage.sync.get(['indexUrl'], resolve));
+    const sourceUrl = indexUrl || DEFAULT_INDEX_URL;
+    if (sourceUrl) {
+      try {
+        const resp = await fetch(sourceUrl, { cache: 'no-store' });
+        if (resp.ok) {
+          const list = await resp.json();
+          const cleaned = Array.isArray(list)
+            ? list.map((x) => ({ market: String(x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
+                  .filter((x) => /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code) && x.name)
+            : [];
+          if (cleaned.length) {
+            await new Promise((resolve) => chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() }, resolve));
+            stockIndex = cleaned;
+            if (indexInfo) indexInfo.textContent = `索引本地缓存，共 ${cleaned.length} 条，更新时间 ${new Date().toLocaleString()}`;
+            return stockIndex;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  // 2) Fallback to packaged stocks.json
   try {
     const url = chrome.runtime.getURL('stocks.json');
     const resp = await fetch(url, { cache: 'no-store' });
     stockIndex = await resp.json();
+    if (indexInfo) indexInfo.textContent = `使用内置索引，共 ${stockIndex.length} 条`;
   } catch (_) {
     stockIndex = [];
+    if (indexInfo) indexInfo.textContent = '未能加载索引';
   }
   return stockIndex;
 }
@@ -321,12 +376,15 @@ async function ensureNormalizedBeforeSave() {
   if (first) {
     const sym = first.getAttribute('data-sym');
     const nm = first.getAttribute('data-name') || '';
-    if (sym) return { symbol: sym, name: nm };
+    if (sym && /^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym.toLowerCase(), name: nm };
   }
   const idx = await ensureStockIndex();
   const key = val.toLowerCase();
   const match = idx.find((s) => s.name.toLowerCase() === key || s.code === val);
-  if (match) return { symbol: `${match.market}${match.code}`, name: match.name };
+  if (match) {
+    const sym = `${match.market}${match.code}`.toLowerCase();
+    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: match.name };
+  }
   const sym2 = normalizeCodeToSymbol(val);
   if (sym2) {
     const name = await resolveNameForSymbol(sym2).catch(() => undefined);
@@ -335,12 +393,14 @@ async function ensureNormalizedBeforeSave() {
   const api = await fetchSinaSuggest(val).catch(() => []);
   if (api && api.length) {
     const a = api[0];
-    return { symbol: `${a.market}${a.code}`, name: a.name };
+    const sym = `${a.market}${a.code}`.toLowerCase();
+    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: a.name };
   }
   const api2 = await fetchTencentSuggest(val).catch(() => []);
   if (api2 && api2.length) {
     const a2 = api2[0];
-    return { symbol: `${a2.market}${a2.code}`, name: a2.name };
+    const sym = `${a2.market}${a2.code}`.toLowerCase();
+    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: a2.name };
   }
   throw new Error('no-match');
 }
@@ -361,3 +421,29 @@ async function resolveNameForSymbol(sym) {
   const item = idx.find((s) => `${s.market}${s.code}`.toLowerCase() === sym.toLowerCase());
   return item?.name;
 }
+
+// --- Manual refresh for full index ---
+async function refreshStockIndex() {
+  if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
+  const preset = (form.indexUrl && form.indexUrl.value) || DEFAULT_INDEX_URL || '';
+  const url = window.prompt('请输入股票索引 JSON 的 URL（同源或支持 CORS）：', preset);
+  if (!url) return;
+  try {
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const list = await resp.json();
+    if (!Array.isArray(list)) throw new Error('索引格式非数组');
+    const cleaned = list
+      .map((x) => ({ market: (x.market||'').toLowerCase(), code: String(x.code||'').trim(), name: String(x.name||'').trim() }))
+      .filter((x) => x.market && x.code && x.name && /^(sh|sz)$/.test(x.market) && /^\d{6}$/.test(x.code));
+    await new Promise((resolve) => chrome.storage.local.set({ stockIndex: cleaned, stockIndexUpdatedAt: Date.now() }, resolve));
+    stockIndex = cleaned;
+    if (indexInfo) indexInfo.textContent = `索引本地缓存，共 ${cleaned.length} 条，更新时间 ${new Date().toLocaleString()}`;
+    showStatus(`已刷新索引，共 ${cleaned.length} 条`);
+  } catch (e) {
+    console.error('刷新索引失败', e);
+    showStatus('刷新索引失败，请检查 URL 或网络', 'error');
+  }
+}
+
+refreshIndexBtn?.addEventListener('click', refreshStockIndex);
