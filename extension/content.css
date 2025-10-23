@@ -129,8 +129,8 @@
   overflow: visible;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
+  background: transparent; /* no background behind rocket */
+  border: none; /* no outer border */
 }
 
 /* Use stronger ring color by direction to降低虚感 */
@@ -168,9 +168,9 @@
   transform: rotate(-15deg);
 }
 
-.tos-bubble[data-direction='up'] { border-color: #ef4444; color: #ef4444; }
-.tos-bubble[data-direction='down'] { border-color: #22c55e; color: #22c55e; }
-.tos-bubble[data-direction='flat'] { border-color: #94a3b8; color: #94a3b8; }
+.tos-bubble[data-direction='up'] { color: #ef4444; }
+.tos-bubble[data-direction='down'] { color: #22c55e; }
+.tos-bubble[data-direction='flat'] { color: #94a3b8; }
 
 .tos-rocket-svg .rocket-fill { fill: currentColor; }
 .tos-rocket-svg .rocket-window { fill: rgba(255,255,255,0.9); }
@@ -183,4 +183,13 @@
   position: relative;
   z-index: 1;
   text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Centered white badge for the numeric value */
+.tos-badge {
+  background: #ffffff;
+  color: #0f172a !important; /* keep digits readable regardless of direction */
+  padding: 4px 8px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
 }

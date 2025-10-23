@@ -117,7 +117,6 @@ function updateQuoteDisplay() {
       ? Math.abs(quote.changePercent).toFixed(2)
       : '--';
     changeEl.textContent = showPercent ? pctVal : absVal;
-    changeEl.style.color = quote.color || '';
   }
   if (timeEl) {
     const date = new Date(quote.updatedAt || Date.now());
@@ -266,7 +265,7 @@ function createBubble() {
   priceEl.textContent = '--';
 
   changeEl = document.createElement('div');
-  changeEl.className = 'tos-change';
+  changeEl.className = 'tos-change tos-badge';
   changeEl.textContent = '--';
 
   // Rocket SVG as background illustration
