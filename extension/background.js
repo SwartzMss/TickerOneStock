@@ -18,6 +18,7 @@ const DEFAULT_BUBBLE_STATE = {
 let currentConfig = { ...DEFAULT_CONFIG };
 let pollTimerId = null;
 let lastQuote = null;
+let lastDirection = 'flat';
 
 function storageGet(area, keys) {
   return new Promise((resolve) => {
@@ -59,6 +60,39 @@ async function loadConfig() {
 async function saveLastQuote(quote) {
   lastQuote = quote;
   await storageSet('local', { lastQuote: quote });
+}
+
+function colorForDirection(direction) {
+  if (direction === 'up') return '#ef4444';
+  if (direction === 'down') return '#22c55e';
+  return '#64748b';
+}
+
+function makeCircleImageData(size, color) {
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = color;
+  const r = Math.floor(size / 2);
+  ctx.beginPath();
+  ctx.arc(r, r, r - 1, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+async function updateActionIcon(direction = 'flat') {
+  try {
+    const color = colorForDirection(direction);
+    const sizes = [16, 32, 48, 128];
+    const imageData = {};
+    for (const s of sizes) {
+      imageData[s] = makeCircleImageData(s, color);
+    }
+    await chrome.action.setIcon({ imageData });
+  } catch (_) {
+    // ignore icon errors to avoid breaking polling
+  }
 }
 
 async function broadcastQuote(quote) {
@@ -185,6 +219,10 @@ async function fetchAndBroadcast() {
     quote.updatedAt = Date.now();
     await saveLastQuote(quote);
     await broadcastQuote(quote);
+    if (quote.direction) {
+      lastDirection = quote.direction;
+      updateActionIcon(lastDirection);
+    }
   } catch (error) {
     console.error('获取行情失败', error);
   }
@@ -210,7 +248,11 @@ async function init() {
   const local = await storageGet('local', ['lastQuote']);
   if (local.lastQuote) {
     lastQuote = local.lastQuote;
+    if (lastQuote.direction) {
+      lastDirection = lastQuote.direction;
+    }
   }
+  updateActionIcon(lastDirection);
   startPolling();
 }
 
