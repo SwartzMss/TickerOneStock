@@ -1,7 +1,7 @@
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
   bubbleOpacity: 1,
-  bubbleSize: { width: 120, height: 120 },
+  bubbleSize: { width: 60, height: 60 },
   bubblePosition: { x: 24, y: 24 },
   theme: 'auto'
 };

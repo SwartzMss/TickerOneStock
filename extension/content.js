@@ -2,7 +2,7 @@ const DEFAULT_BUBBLE_STATE = {
   collapsed: false,
   hidden: false,
   bubblePosition: { x: 24, y: 24 },
-  bubbleSize: { width: 120, height: 120 }
+  bubbleSize: { width: 60, height: 60 }
 };
 
 let bubbleState = { ...DEFAULT_BUBBLE_STATE };
