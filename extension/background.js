@@ -420,7 +420,7 @@ function scheduleDailyRefresh() {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm?.name !== 'refreshIndexDaily') return;
-  await refreshIndexFromEastmoney();
+  await refreshIndexFromEastmoneyWithRetry(3);
 });
 
 // --- Eastmoney local index refresh ---
@@ -476,11 +476,23 @@ async function refreshIndexFromEastmoney() {
   }
 }
 
+// Simple retry wrapper with backoff
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+async function refreshIndexFromEastmoneyWithRetry(maxAttempts = 3) {
+  let last;
+  for (let i = 1; i <= maxAttempts; i++) {
+    last = await refreshIndexFromEastmoney();
+    if (last && last.ok) return last;
+    await sleep(i * 1000);
+  }
+  return last || { ok: false, error: 'retry-failed' };
+}
+
 // Expose manual refresh via message
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return;
   if (message.type === 'REFRESH_STOCK_INDEX') {
-    refreshIndexFromEastmoney().then((res) => sendResponse(res)).catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    refreshIndexFromEastmoneyWithRetry(3).then((res) => sendResponse(res)).catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
     return true;
   }
 });

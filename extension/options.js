@@ -248,23 +248,26 @@ form.symbol.addEventListener('keydown', (e) => {
 
 async function ensureNormalizedBeforeSave() {
   const val = form.symbol.value.trim();
+  // 1) If input contains a standard code anywhere (e.g., "名称  sh600519"), trust that selection
+  const m = val.match(/(sh|sz)\d{6}/i);
+  if (m) {
+    const sym = m[0].toLowerCase();
+    const name = await resolveNameForSymbol(sym).catch(() => undefined);
+    return { symbol: sym, name };
+  }
+  // 2) Pure standard code
   if (/^(sh|sz)\d{6}$/i.test(val)) {
     return { symbol: val.toLowerCase(), name: undefined };
   }
-  const first = searchResults?.querySelector('.search-item');
-  if (first) {
-    const sym = first.getAttribute('data-sym');
-    const nm = first.getAttribute('data-name') || '';
-    if (sym && /^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym.toLowerCase(), name: nm };
-  }
+  // 3) Exact match by name or exact 6-digit code
   const idx = await ensureStockIndex();
   const key = val.toLowerCase();
-  // exact name match or exact 6-digit code match
   const match = idx.find((s) => s.name.toLowerCase() === key || s.code === val);
   if (match) {
     const sym = `${match.market}${match.code}`.toLowerCase();
-    if (/^(sh|sz)\d{6}$/i.test(sym)) return { symbol: sym, name: match.name };
+    return { symbol: sym, name: match.name };
   }
+  // 4) Heuristic: 6-digit code without market prefix
   const sym2 = normalizeCodeToSymbol(val);
   if (sym2) {
     return { symbol: sym2, name: undefined };
