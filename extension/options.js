@@ -211,22 +211,9 @@ searchResults?.addEventListener('click', (e) => {
 
 form.symbol.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-    e.preventDefault();
-    doSearch().then(() => {
-      // Select first suggestion if available
-      const first = searchResults.querySelector('.search-item');
-      if (first) {
-        const sym = first.getAttribute('data-sym');
-        const nm = first.getAttribute('data-name') || '';
-        if (sym) {
-          form.symbol.value = nm ? `${nm}  ${sym}` : sym;
-          searchResults.style.display = 'none';
-          showStatus(`已选择 ${nm || sym}`);
-        }
-      } else {
-        doDetect();
-      }
-    });
+    // On Enter, do not auto-select the first suggestion to avoid mismatches.
+    // Let the form submit naturally and rely on handleSubmit normalization.
+    searchResults.style.display = 'none';
   }
 });
 
