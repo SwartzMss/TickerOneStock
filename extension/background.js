@@ -146,9 +146,7 @@ function parseTencentQuote(symbol, text) {
     throw new Error('无法解析腾讯行情响应');
   }
   const parts = match[1].split('~');
-  if (parts.length < 32) {
-    throw new Error('腾讯行情响应字段不足');
-  }
+  // 某些标的字段可能不足，但后续会校验关键字段并降级
   const price = parseFloat(parts[3]);
   const previousClose = parseFloat(parts[4]);
   const open = parseFloat(parts[5]);
@@ -164,7 +162,7 @@ function parseTencentQuote(symbol, text) {
     open,
     high,
     low,
-    time: `${date} ${time}`,
+    time: date && time ? `${date} ${time}` : undefined,
     provider: 'tencent'
   };
 }
@@ -175,9 +173,7 @@ function parseSinaQuote(symbol, text) {
     throw new Error('无法解析新浪行情响应');
   }
   const parts = match[1].split(',');
-  if (parts.length < 32) {
-    throw new Error('新浪行情响应字段不足');
-  }
+  // 有些指数返回字段可能不足，后续会校验关键字段并降级
   const price = parseFloat(parts[3]);
   const previousClose = parseFloat(parts[2]);
   const open = parseFloat(parts[1]);
@@ -193,7 +189,7 @@ function parseSinaQuote(symbol, text) {
     open,
     high,
     low,
-    time: `${date} ${time}`,
+    time: date && time ? `${date} ${time}` : undefined,
     provider: 'sina'
   };
 }
@@ -225,13 +221,21 @@ async function fetchQuote() {
           }
         }
         const text = decoder.decode(buffer);
-        return computeQuoteMetrics(parseSinaQuote(symbol, text));
+        const q = parseSinaQuote(symbol, text);
+        if (!Number.isFinite(q.price) || !Number.isFinite(q.previousClose)) {
+          throw new Error('新浪行情字段不完整');
+        }
+        return computeQuoteMetrics(q);
       } else {
         const url = `https://qt.gtimg.cn/q=${symbol}`;
         const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
         if (!response.ok) throw new Error(`Tencent HTTP ${response.status}`);
         const text = await response.text();
-        return computeQuoteMetrics(parseTencentQuote(symbol, text));
+        const q = parseTencentQuote(symbol, text);
+        if (!Number.isFinite(q.price) || !Number.isFinite(q.previousClose)) {
+          throw new Error('腾讯行情字段不完整');
+        }
+        return computeQuoteMetrics(q);
       }
     } finally {
       clearTimeout(timeout);
@@ -256,8 +260,8 @@ async function fetchQuote() {
       }
       return q2;
     } catch (e2) {
-      // 都失败则抛出第一错误
-      throw e1;
+      // 都失败则抛出组合错误信息，便于排查
+      throw new Error(`${e1?.message || e1} | ${e2?.message || e2}`);
     }
   }
 }
