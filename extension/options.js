@@ -150,10 +150,9 @@ async function doSearch() {
   const raw = form.symbol.value.trim();
   // Prefer live API; fallback to local index
   const apiResults = await fetchSinaSuggest(raw).catch(() => []);
-  if (apiResults && apiResults.length) {
-    renderSearchResults(apiResults);
-    return;
-  }
+  if (apiResults && apiResults.length) { renderSearchResults(apiResults); return; }
+  const apiResults2 = await fetchTencentSuggest(raw).catch(() => []);
+  if (apiResults2 && apiResults2.length) { renderSearchResults(apiResults2); return; }
   const idx = await ensureStockIndex();
   if (!raw) {
     renderSearchResults(idx.slice(0, 20));
@@ -204,6 +203,29 @@ async function fetchSinaSuggest(key) {
     const market = sym.slice(0, 2);
     const code = sym.slice(2);
     return market && code ? { market, code, name } : null;
+  }).filter(Boolean);
+  return list;
+}
+
+// Live API suggest (Tencent)
+async function fetchTencentSuggest(key) {
+  const q = (key || form.symbol.value || '').trim();
+  if (!q) return [];
+  const url = `https://smartbox.gtimg.cn/s3/?t=all&q=${encodeURIComponent(q)}`;
+  const resp = await fetch(url, { cache: 'no-store' });
+  const text = await resp.text();
+  // Expected like: v_hint="sz000001,平安银行,...;sh600519,贵州茅台,...;"
+  const m = text.match(/="([^"]*)"/);
+  if (!m) return [];
+  const entries = m[1].split(';').filter(Boolean);
+  const list = entries.map((line) => {
+    const parts = line.split(',');
+    const sym = (parts[0] || '').trim().toLowerCase();
+    const name = (parts[1] || '').trim();
+    if (!/^((sh|sz)\d{6})$/.test(sym)) return null;
+    const market = sym.slice(0, 2);
+    const code = sym.slice(2);
+    return { market, code, name };
   }).filter(Boolean);
   return list;
 }
