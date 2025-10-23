@@ -146,12 +146,17 @@ function parseTencentQuote(symbol, text) {
     throw new Error('无法解析腾讯行情响应');
   }
   const parts = match[1].split('~');
-  // 某些标的字段可能不足，但后续会校验关键字段并降级
-  const price = parseFloat(parts[3]);
-  const previousClose = parseFloat(parts[4]);
-  const open = parseFloat(parts[5]);
-  const high = parseFloat(parts[33]);
-  const low = parseFloat(parts[34]);
+  const num = (v) => {
+    const x = parseFloat(v);
+    return Number.isFinite(x) ? x : NaN;
+  };
+  let price = num(parts[3]);
+  let previousClose = num(parts[4]);
+  if (!Number.isFinite(previousClose)) previousClose = num(parts[2]);
+  if (!Number.isFinite(price)) price = num(parts[1]);
+  const open = num(parts[5]);
+  const high = num(parts[33]);
+  const low = num(parts[34]);
   const date = parts[30];
   const time = parts[31];
   return {
@@ -173,12 +178,15 @@ function parseSinaQuote(symbol, text) {
     throw new Error('无法解析新浪行情响应');
   }
   const parts = match[1].split(',');
-  // 有些指数返回字段可能不足，后续会校验关键字段并降级
-  const price = parseFloat(parts[3]);
-  const previousClose = parseFloat(parts[2]);
-  const open = parseFloat(parts[1]);
-  const high = parseFloat(parts[4]);
-  const low = parseFloat(parts[5]);
+  const num = (v) => {
+    const x = parseFloat(v);
+    return Number.isFinite(x) ? x : NaN;
+  };
+  const price = num(parts[3]);
+  const previousClose = num(parts[2]);
+  const open = num(parts[1]);
+  const high = num(parts[4]);
+  const low = num(parts[5]);
   const date = parts[30];
   const time = parts[31];
   return {
@@ -222,9 +230,6 @@ async function fetchQuote() {
         }
         const text = decoder.decode(buffer);
         const q = parseSinaQuote(symbol, text);
-        if (!Number.isFinite(q.price) || !Number.isFinite(q.previousClose)) {
-          throw new Error('新浪行情字段不完整');
-        }
         return computeQuoteMetrics(q);
       } else {
         const url = `https://qt.gtimg.cn/q=${symbol}`;
@@ -232,9 +237,6 @@ async function fetchQuote() {
         if (!response.ok) throw new Error(`Tencent HTTP ${response.status}`);
         const text = await response.text();
         const q = parseTencentQuote(symbol, text);
-        if (!Number.isFinite(q.price) || !Number.isFinite(q.previousClose)) {
-          throw new Error('腾讯行情字段不完整');
-        }
         return computeQuoteMetrics(q);
       }
     } finally {
