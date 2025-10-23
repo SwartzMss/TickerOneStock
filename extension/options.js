@@ -1,6 +1,5 @@
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
-  refreshInterval: 10,
   bubbleOpacity: 1,
   bubbleSize: { width: 120, height: 120 },
   bubblePosition: { x: 24, y: 24 },
@@ -41,7 +40,6 @@ async function loadConfig() {
   const config = { ...DEFAULT_CONFIG, ...syncValues };
 
   form.symbol.value = config.symbol;
-  form.refreshInterval.value = config.refreshInterval;
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
   form.theme.value = config.theme || 'auto';
   opacityInput.value = config.bubbleOpacity;
@@ -52,7 +50,6 @@ function serializeForm() {
   const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
   return {
     symbol: form.symbol.value.trim(),
-    refreshInterval: Math.max(3, Number(form.refreshInterval.value) || DEFAULT_CONFIG.refreshInterval),
     bubbleOpacity: Number(opacityInput.value),
     bubbleSize: { width: bubbleWidth },
     theme: form.theme.value

@@ -1,6 +1,5 @@
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
-  refreshInterval: 10,
   bubbleOpacity: 1,
   bubbleSize: { width: 120, height: 120 },
   bubblePosition: { x: 24, y: 24 },
@@ -16,6 +15,7 @@ const DEFAULT_BUBBLE_STATE = {
 
 let currentConfig = { ...DEFAULT_CONFIG };
 let pollTimerId = null;
+let consecutiveFailures = 0;
 let lastQuote = null;
 let enabled = true; // 控制是否在页面显示气泡
 let lastSuccessfulProvider = null; // 上次成功的行情源
@@ -60,7 +60,6 @@ async function ensureDefaults() {
 async function loadConfig() {
   const data = await storageGet('sync', Object.keys(DEFAULT_CONFIG));
   currentConfig = { ...DEFAULT_CONFIG, ...data };
-  currentConfig.refreshInterval = Math.max(3, Number(currentConfig.refreshInterval) || DEFAULT_CONFIG.refreshInterval);
   currentConfig.bubbleOpacity = Math.min(1, Math.max(0.2, Number(currentConfig.bubbleOpacity) || DEFAULT_CONFIG.bubbleOpacity));
 }
 
@@ -204,7 +203,7 @@ async function fetchQuote() {
 
   async function fetchFromProvider(provider) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.max(5000, currentConfig.refreshInterval * 1000));
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
       if (provider === 'sina') {
         const url = `https://hq.sinajs.cn/list=${symbol}`;
@@ -269,22 +268,51 @@ async function fetchAndBroadcast() {
     quote.updatedAt = Date.now();
     await saveLastQuote(quote);
     await broadcastQuote(quote);
+    consecutiveFailures = 0;
   } catch (error) {
     console.error('获取行情失败', error);
+    consecutiveFailures += 1;
   }
 }
 
 function stopPolling() {
   if (pollTimerId) {
-    clearInterval(pollTimerId);
+    clearTimeout(pollTimerId);
     pollTimerId = null;
   }
 }
 
+function isTradingHours(now = new Date()) {
+  const day = now.getDay();
+  if (day === 0 || day === 6) return false; // 周末
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const hm = h * 60 + m;
+  const amStart = 9 * 60 + 30;
+  const amEnd = 11 * 60 + 30;
+  const pmStart = 13 * 60;
+  const pmEnd = 15 * 60;
+  return (hm >= amStart && hm <= amEnd) || (hm >= pmStart && hm <= pmEnd);
+}
+
+function nextIntervalMs() {
+  if (consecutiveFailures > 0) {
+    return Math.min(30000, 5000 + (consecutiveFailures - 1) * 5000);
+  }
+  return isTradingHours() ? 5000 : 30000;
+}
+
+function scheduleNext() {
+  clearTimeout(pollTimerId);
+  pollTimerId = setTimeout(async () => {
+    await fetchAndBroadcast();
+    scheduleNext();
+  }, nextIntervalMs());
+}
+
 function startPolling() {
   stopPolling();
-  const interval = Math.max(3, Number(currentConfig.refreshInterval) || DEFAULT_CONFIG.refreshInterval) * 1000;
-  pollTimerId = setInterval(fetchAndBroadcast, interval);
+  scheduleNext();
   fetchAndBroadcast();
 }
 
