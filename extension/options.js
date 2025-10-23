@@ -1,7 +1,6 @@
 const DEFAULT_CONFIG = {
   symbol: 'sh000300',
   refreshInterval: 10,
-  displayMode: 'both',
   quoteProvider: 'tencent',
   bubbleOpacity: 0.95,
   bubbleSize: { width: 220, height: 120 },
@@ -45,7 +44,6 @@ async function loadConfig() {
   form.symbol.value = config.symbol;
   form.refreshInterval.value = config.refreshInterval;
   form.quoteProvider.value = config.quoteProvider;
-  form.displayMode.value = config.displayMode;
   form.bubbleWidth.value = config.bubbleSize?.width ?? DEFAULT_CONFIG.bubbleSize.width;
   form.bubbleHeight.value = config.bubbleSize?.height ?? DEFAULT_CONFIG.bubbleSize.height;
   form.theme.value = config.theme || 'auto';
@@ -60,7 +58,6 @@ function serializeForm() {
     symbol: form.symbol.value.trim(),
     refreshInterval: Math.max(3, Number(form.refreshInterval.value) || DEFAULT_CONFIG.refreshInterval),
     quoteProvider: form.quoteProvider.value,
-    displayMode: form.displayMode.value,
     bubbleOpacity: Number(opacityInput.value),
     bubbleSize: { width: bubbleWidth, height: bubbleHeight },
     theme: form.theme.value

@@ -99,9 +99,8 @@
   line-height: 1;
 }
 
-.tos-bubble[data-display-mode='change'] .tos-price {
-  display: none;
-}
+/* Always hide price; we only show change */
+.tos-price { display: none; }
 
 .tos-change {
   font-size: 16px;
@@ -109,9 +108,7 @@
   color: rgba(15, 118, 110, 0.9);
 }
 
-.tos-bubble[data-display-mode='price'] .tos-change {
-  display: none;
-}
+/* Always show change */
 
 .tos-footer {
   display: flex;
@@ -156,4 +153,33 @@
 .tos-bubble *,
 .tos-reopen-button {
   font-family: inherit;
+}
+
+/* Round bubble style for change-only mode */
+.tos-bubble.tos-round {
+  border-radius: 50%;
+  overflow: hidden;
+  /* ensure it's visually centered */
+  align-items: center;
+  justify-content: center;
+}
+
+.tos-bubble.tos-round .tos-header,
+.tos-bubble.tos-round .tos-footer {
+  display: none;
+}
+
+.tos-bubble.tos-round .tos-body {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tos-bubble.tos-round .tos-change {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
 }

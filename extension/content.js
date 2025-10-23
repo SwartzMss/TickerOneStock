@@ -18,6 +18,8 @@ let bodyEl = null;
 let storageListenerAttached = false;
 let prefersDarkMedia = null;
 let prefersDarkListener = null;
+let changeCycleTimer = null;
+let showPercent = false;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -52,7 +54,12 @@ function applyBubbleSize() {
   if (!bubbleEl) return;
   const { width, height } = bubbleState.bubbleSize;
   bubbleEl.style.width = `${width}px`;
-  bubbleEl.style.height = bubbleState.collapsed ? '' : `${height}px`;
+  if (bubbleEl.classList.contains('tos-round')) {
+    // enforce circle by making height = width
+    bubbleEl.style.height = `${width}px`;
+  } else {
+    bubbleEl.style.height = bubbleState.collapsed ? '' : `${height}px`;
+  }
 }
 
 function applyCollapsedState() {
@@ -90,9 +97,10 @@ function updateTheme() {
   }
 }
 
-function updateDisplayMode() {
+function forceRoundMode() {
   if (!bubbleEl) return;
-  bubbleEl.dataset.displayMode = config?.displayMode || 'both';
+  bubbleEl.classList.add('tos-round');
+  applyBubbleSize();
 }
 
 function updateOpacity() {
@@ -107,12 +115,16 @@ function updateQuoteDisplay() {
   if (nameEl) {
     nameEl.textContent = `${quote.name || quote.symbol}`;
   }
-  if (priceEl) {
-    priceEl.textContent = formatNumber(quote.price, 2);
-    priceEl.style.color = quote.color || '';
-  }
+  // Price is not displayed anymore
   if (changeEl) {
-    changeEl.textContent = formatChange(quote.change, quote.changePercent);
+    // Always cycle between absolute change and percent (numbers only, no sign, no %)
+    const absVal = (typeof quote.change === 'number' && !Number.isNaN(quote.change))
+      ? Math.abs(quote.change).toFixed(2)
+      : '--';
+    const pctVal = (typeof quote.changePercent === 'number' && !Number.isNaN(quote.changePercent))
+      ? Math.abs(quote.changePercent).toFixed(2)
+      : '--';
+    changeEl.textContent = showPercent ? pctVal : absVal;
     changeEl.style.color = quote.color || '';
   }
   const providerEl = bubbleEl.querySelector('.tos-provider');
@@ -128,6 +140,19 @@ function updateQuoteDisplay() {
     }
   }
   bubbleEl.dataset.direction = quote.direction || 'flat';
+}
+
+function setupChangeCycle() {
+  // Clear any existing timer
+  if (changeCycleTimer) {
+    clearInterval(changeCycleTimer);
+    changeCycleTimer = null;
+  }
+  // Always cycle every 3s
+  changeCycleTimer = setInterval(() => {
+    showPercent = !showPercent;
+    updateQuoteDisplay();
+  }, 3000);
 }
 
 function persistBubbleState(updates) {
@@ -268,15 +293,18 @@ function createBubble() {
   (document.body || document.documentElement).appendChild(bubbleEl);
 
   setupDrag(header);
+  // allow dragging from the whole bubble (useful when round style hides header)
+  setupDrag(bubbleEl);
   createReopenButton();
   applyBubblePosition();
   applyBubbleSize();
   applyCollapsedState();
   applyHiddenState();
   updateTheme();
-  updateDisplayMode();
+  forceRoundMode();
   updateOpacity();
   updateQuoteDisplay();
+  setupChangeCycle();
 
   if (quote?.provider && providerEl) {
     providerEl.textContent = `数据源：${quote.provider}`;
@@ -310,10 +338,7 @@ function attachStorageListener() {
       let shouldUpdateTheme = false;
       for (const [key, change] of Object.entries(changes)) {
         if (!change || typeof change.newValue === 'undefined') continue;
-        if (key === 'displayMode') {
-          config = { ...config, displayMode: change.newValue };
-          shouldUpdateDisplay = true;
-        } else if (key === 'bubbleOpacity') {
+        if (key === 'bubbleOpacity') {
           config = { ...config, bubbleOpacity: change.newValue };
           shouldUpdateOpacity = true;
         } else if (key === 'bubbleSize') {
@@ -328,9 +353,6 @@ function attachStorageListener() {
           config = { ...config, symbol: change.newValue };
           if (nameEl) nameEl.textContent = change.newValue;
         }
-      }
-      if (shouldUpdateDisplay) {
-        updateDisplayMode();
       }
       if (shouldUpdateOpacity) {
         updateOpacity();
