@@ -364,8 +364,9 @@ async function refreshIndexFromEastmoneyInPage() {
       let pn = 1;
       const pz = 500;
       for (let i = 0; i < 50; i++) {
-        const params = { pn, pz, po: 1, np: 1, fltt: 2, invt: 2, fid: 'f3', fields: 'f12,f14', fs };
-        const qs = new URLSearchParams(params).toString();
+        const params = { pn, pz, po: 1, np: 1, fltt: 2, invt: 2, fid: 'f3', fields: 'f12,f14', fs, ut: 'fa5fd1943c7b386f172d6893dbfba10b' };
+        // Ensure spaces in fs are encoded as %20 (not +)
+        const qs = new URLSearchParams(params).toString().replace(/\+/g, '%20');
         const resp = await fetch(`${url}?${qs}`, { cache: 'no-store' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const json = await resp.json();
