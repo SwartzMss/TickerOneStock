@@ -49,7 +49,7 @@ function showContextMenu(x, y) {
   menu.style.top = `${y}px`;
   const itemHide = document.createElement('div');
   itemHide.className = 'tos-menu__item';
-  itemHide.textContent = '隐藏气泡';
+  itemHide.textContent = '隐藏';
   itemHide.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'SET_ENABLED_REQUEST', payload: { enabled: false } }, () => {
       bubbleState.hidden = true;
@@ -294,7 +294,7 @@ function createBubble() {
   const hideBtn = document.createElement('button');
   hideBtn.type = 'button';
   hideBtn.className = 'tos-action-btn';
-  hideBtn.title = '隐藏气泡';
+  hideBtn.title = '隐藏';
   hideBtn.innerHTML = '&#10005;';
   hideBtn.addEventListener('click', () => {
     bubbleState.hidden = true;
