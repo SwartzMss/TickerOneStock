@@ -13,6 +13,18 @@
 - 导出索引：一键导出本地缓存为 `stocks-YYYYMMDD.json`。
 - 最小权限：仅行情源（腾讯/新浪）、索引源（东财）、`storage/tabs/alarms/downloads`。
 
+### 生成全量股票索引（用 AKShare 离线构建）
+
+如果在你的网络环境下东方财富 push2 接口受风控/CORS 影响，可离线生成并打包完整 `extension/stocks.json`：
+
+- 安装依赖（Python 3.9+）：`pip install akshare pandas`
+- 执行脚本：`python tools/build_stocks_from_akshare.py`
+- 输出：覆盖 `extension/stocks.json`，内容为所有 A 股 `{ code, name, market }` 列表。
+
+扩展会：
+- 优先使用本地缓存的全量索引（你点击“手动获取/更新”后保存于 `chrome.storage.local`）；
+- 若无缓存，则回退读取打包的 `extension/stocks.json`，保证本地搜索/补全可用。
+
 ## 安装
 
 1) 打开 `chrome://extensions/` → 开启“开发者模式”。
@@ -38,7 +50,7 @@
   - `https://hq.sinajs.cn/*`（新浪实时行情）
   - `https://push2.eastmoney.com/*`（东方财富全量索引）
 - permissions
-  - `storage`, `tabs`, `alarms`, `downloads`
+  - `storage`, `tabs`, `alarms`, `downloads`, `declarativeNetRequest`, `declarativeNetRequestWithHostAccess`
 
 ## 常见问题
 
