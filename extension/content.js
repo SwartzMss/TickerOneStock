@@ -20,6 +20,53 @@ let prefersDarkMedia = null;
 let prefersDarkListener = null;
 let changeCycleTimer = null;
 let showPercent = false;
+let contextMenuEl = null;
+
+function hideContextMenu() {
+  if (contextMenuEl && contextMenuEl.parentNode) {
+    contextMenuEl.parentNode.removeChild(contextMenuEl);
+  }
+  contextMenuEl = null;
+  document.removeEventListener('click', onGlobalClickDismiss, true);
+  document.removeEventListener('keydown', onEscDismiss, true);
+}
+
+function onGlobalClickDismiss(e) {
+  if (contextMenuEl && !contextMenuEl.contains(e.target)) {
+    hideContextMenu();
+  }
+}
+
+function onEscDismiss(e) {
+  if (e.key === 'Escape') hideContextMenu();
+}
+
+function showContextMenu(x, y) {
+  hideContextMenu();
+  const menu = document.createElement('div');
+  menu.className = 'tos-menu';
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  const itemHide = document.createElement('div');
+  itemHide.className = 'tos-menu__item';
+  itemHide.textContent = '隐藏气泡';
+  itemHide.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'SET_ENABLED_REQUEST', payload: { enabled: false } }, () => {
+      bubbleState.hidden = true;
+      applyHiddenState();
+      persistBubbleState({ hidden: true });
+      hideContextMenu();
+    });
+  });
+  menu.appendChild(itemHide);
+  document.body.appendChild(menu);
+  contextMenuEl = menu;
+  // Dismiss handlers
+  setTimeout(() => {
+    document.addEventListener('click', onGlobalClickDismiss, true);
+    document.addEventListener('keydown', onEscDismiss, true);
+  }, 0);
+}
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -289,14 +336,12 @@ function createBubble() {
   setupChangeCycle();
   updateAdaptiveFontSize(bubbleState.bubbleSize.width);
 
-  // Right-click to hide via background (also updates toolbar icon color)
+  // Right-click shows context menu with actions
   bubbleEl.addEventListener('contextmenu', (e) => {
     try { e.preventDefault(); } catch (_) {}
-    chrome.runtime.sendMessage({ type: 'SET_ENABLED_REQUEST', payload: { enabled: false } }, () => {
-      bubbleState.hidden = true;
-      applyHiddenState();
-      persistBubbleState({ hidden: true });
-    });
+    const x = e.clientX;
+    const y = e.clientY;
+    showContextMenu(x, y);
   });
 }
 
