@@ -289,6 +289,15 @@ function createBubble() {
   setupChangeCycle();
   updateAdaptiveFontSize(bubbleState.bubbleSize.width);
 
+  // Right-click to hide via background (also updates toolbar icon color)
+  bubbleEl.addEventListener('contextmenu', (e) => {
+    try { e.preventDefault(); } catch (_) {}
+    chrome.runtime.sendMessage({ type: 'SET_ENABLED_REQUEST', payload: { enabled: false } }, () => {
+      bubbleState.hidden = true;
+      applyHiddenState();
+      persistBubbleState({ hidden: true });
+    });
+  });
 }
 
 function handleQuoteUpdate(message) {

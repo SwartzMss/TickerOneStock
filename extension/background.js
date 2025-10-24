@@ -398,6 +398,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchAndBroadcast().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;
   }
+  if (message.type === 'SET_ENABLED_REQUEST') {
+    try {
+      const next = !!(message && message.payload && message.payload.enabled);
+      enabled = next;
+      storageSet('local', { enabled }).then(() => {
+        updateActionIcon(enabled);
+        broadcastEnabledToAllTabs(enabled).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: true }));
+      });
+    } catch (_) {
+      sendResponse({ ok: false });
+    }
+    return true;
+  }
 });
 
 chrome.action.onClicked.addListener(() => { toggleEnabled(); });
