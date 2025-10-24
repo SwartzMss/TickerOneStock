@@ -137,6 +137,12 @@ input[type='range'] {
   animation: spin 0.8s linear infinite;
 }
 
+/* better contrast on primary button */
+.btn.btn--primary.is-loading::after {
+  border-color: rgba(248,250,252,0.35);
+  border-top-color: rgba(248,250,252,0.95);
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

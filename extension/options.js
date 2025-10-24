@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
 };
 
 const form = document.getElementById('options-form');
+const btnSave = document.getElementById('btn-save');
 const statusEl = document.getElementById('status');
 const searchResults = document.getElementById('search-results');
 const btnRefreshEastmoney = document.getElementById('btn-refresh-eastmoney');
@@ -101,6 +102,16 @@ async function handleSubmit(event) {
     showStatus('当前页面未在扩展环境中运行，无法保存配置。', 'error');
     return;
   }
+  if (btnSave?.getAttribute('aria-busy') === 'true') {
+    return; // 防抖：保存进行中
+  }
+  // 进入加载态
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.classList.add('is-loading');
+    btnSave.setAttribute('aria-busy', 'true');
+    btnSave.textContent = '保存中…';
+  }
   // Ensure we save a normalized symbol (sh/sz+code)
   try {
     const { symbol: normalized, name: resolvedName } = await ensureNormalizedBeforeSave();
@@ -115,6 +126,13 @@ async function handleSubmit(event) {
     showStatus('无法识别该标的，请更换关键词', 'error');
     if (DEBUG) console.log('[options] normalize failed', e);
     return;
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.classList.remove('is-loading');
+      btnSave.removeAttribute('aria-busy');
+      btnSave.textContent = '保存配置';
+    }
   }
 }
 
