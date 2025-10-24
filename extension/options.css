@@ -102,6 +102,8 @@ input[type='range'] {
   font-size: 14px;
   background: rgba(226, 232, 240, 0.8);
   color: #1f2937;
+  position: relative;
+  transition: filter 120ms ease, opacity 120ms ease, background 120ms ease;
 }
 
 .btn:hover {
@@ -114,6 +116,29 @@ input[type='range'] {
   filter: saturate(0.6) grayscale(0.15);
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* unified loading state */
+.btn.is-loading {
+  cursor: progress;
+  filter: saturate(0.9) brightness(0.98);
+}
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(31,41,55,0.25);
+  border-top-color: rgba(31,41,55,0.85);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .btn--primary {

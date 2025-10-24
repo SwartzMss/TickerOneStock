@@ -342,14 +342,21 @@ btnExportIndex?.addEventListener('click', async () => {
 btnRefreshEastmoney?.addEventListener('click', () => {
   if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
   btnRefreshEastmoney.disabled = true;
+  btnRefreshEastmoney.classList.add('is-loading');
+  btnRefreshEastmoney.setAttribute('aria-busy', 'true');
   btnRefreshEastmoney.textContent = '获取中…';
   chrome.runtime.sendMessage({ type: 'REFRESH_STOCK_INDEX' }, (res) => {
     btnRefreshEastmoney.disabled = false;
+    btnRefreshEastmoney.classList.remove('is-loading');
+    btnRefreshEastmoney.removeAttribute('aria-busy');
     btnRefreshEastmoney.textContent = '手动获取/更新';
     if (res && res.ok) {
       showStatus(`已更新 ${res.size || 0} 条`);
     } else {
       // fallback: try fetching in options page context
+      btnRefreshEastmoney.disabled = true;
+      btnRefreshEastmoney.classList.add('is-loading');
+      btnRefreshEastmoney.setAttribute('aria-busy', 'true');
       refreshIndexFromEastmoneyInPage().then((ok) => {
         if (ok) showStatus('已更新（页内拉取）');
         else {
@@ -358,6 +365,11 @@ btnRefreshEastmoney?.addEventListener('click', () => {
           if (DEBUG) console.warn('[options] refresh failed:', res && res.error);
         }
         loadConfig();
+      }).finally(() => {
+        btnRefreshEastmoney.disabled = false;
+        btnRefreshEastmoney.classList.remove('is-loading');
+        btnRefreshEastmoney.removeAttribute('aria-busy');
+        btnRefreshEastmoney.textContent = '手动获取/更新';
       });
       return;
     }
