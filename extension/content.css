@@ -140,16 +140,16 @@
   background: rgba(248, 250, 252, 0.98);
   color: #0f172a;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 6px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
-  padding: 2px;
+  border-radius: 4px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
+  padding: 1px;
   backdrop-filter: blur(3px);
   white-space: nowrap;
   display: inline-block;
 }
 .tos-menu__item {
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 3px 4px;
+  border-radius: 4px;
   font-size: 12px;
   line-height: 1.05;
   cursor: pointer;
