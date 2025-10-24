@@ -76,7 +76,8 @@ async function loadConfig() {
       eastmoneyStatusEl.style.color = '';
       eastmoneyStatusEl.dataset.status = 'success';
     } else if (status === 'fail') {
-      eastmoneyStatusEl.textContent = `失败，${when}，${local.stockIndexLastError || ''}`;
+      // 不展示英文错误详情，保持简洁
+      eastmoneyStatusEl.textContent = `失败，${when}`;
       eastmoneyStatusEl.style.color = '';
       eastmoneyStatusEl.dataset.status = 'fail';
     } else {
@@ -351,7 +352,11 @@ btnRefreshEastmoney?.addEventListener('click', () => {
       // fallback: try fetching in options page context
       refreshIndexFromEastmoneyInPage().then((ok) => {
         if (ok) showStatus('已更新（页内拉取）');
-        else showStatus(`获取失败：${res && res.error ? res.error : '未知错误'}`, 'error');
+        else {
+          // 不展示英文错误详情
+          showStatus('获取失败，请稍后重试', 'error');
+          if (DEBUG) console.warn('[options] refresh failed:', res && res.error);
+        }
         loadConfig();
       });
       return;
