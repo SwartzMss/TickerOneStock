@@ -5,15 +5,11 @@
     "action": {
       "type": "modifyHeaders",
       "requestHeaders": [
-        {
-          "header": "referer",
-          "operation": "set",
-          "value": "https://quote.eastmoney.com/"
-        }
+        { "header": "referer", "operation": "set", "value": "https://quote.eastmoney.com/" }
       ]
     },
     "condition": {
-      "urlFilter": "https://push2.eastmoney.com/api/qt/clist/get",
+      "urlFilter": "*://push2.eastmoney.com/*",
       "resourceTypes": ["xmlhttprequest"]
     }
   },
@@ -23,27 +19,14 @@
     "action": {
       "type": "modifyHeaders",
       "responseHeaders": [
-        {
-          "header": "access-control-allow-origin",
-          "operation": "set",
-          "value": "*"
-        },
-        {
-          "header": "access-control-allow-methods",
-          "operation": "set",
-          "value": "GET, POST, OPTIONS"
-        },
-        {
-          "header": "access-control-allow-headers",
-          "operation": "set",
-          "value": "*"
-        }
+        { "header": "access-control-allow-origin", "operation": "set", "value": "*" },
+        { "header": "access-control-allow-methods", "operation": "set", "value": "GET, POST, OPTIONS" },
+        { "header": "access-control-allow-headers", "operation": "set", "value": "*" }
       ]
     },
     "condition": {
-      "urlFilter": "https://push2.eastmoney.com/api/qt/clist/get",
+      "urlFilter": "*://push2.eastmoney.com/*",
       "resourceTypes": ["xmlhttprequest"]
     }
   }
 ]
-
