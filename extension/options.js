@@ -84,6 +84,11 @@ async function loadConfig() {
       eastmoneyStatusEl.style.color = '';
       eastmoneyStatusEl.dataset.status = 'unknown';
     }
+    // 导出按钮：只有在至少一次成功获取并且有数据时才可用
+    if (btnExportIndex) {
+      btnExportIndex.disabled = !(status === 'success' && cnt > 0);
+      btnExportIndex.title = btnExportIndex.disabled ? '需先成功获取一次全量索引' : '';
+    }
   }
 }
 
@@ -312,8 +317,10 @@ async function resolveNameForSymbol(sym) {
 // Export local index as JSON
 btnExportIndex?.addEventListener('click', async () => {
   if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
-  const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndex'], resolve));
+  const local = await new Promise((resolve) => chrome.storage.local.get(['stockIndex', 'stockIndexLastStatus'], resolve));
   const list = Array.isArray(local.stockIndex) ? local.stockIndex : [];
+  const ok = local.stockIndexLastStatus === 'success' && list.length > 0;
+  if (!ok) { showStatus('尚未成功获取，无法导出', 'error'); return; }
   const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const now = new Date();
