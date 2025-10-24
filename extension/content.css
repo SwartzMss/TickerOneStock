@@ -150,8 +150,8 @@
 .tos-menu__item {
   padding: 3px 4px;
   border-radius: 4px;
-  font-size: 12px;
-  line-height: 1.05;
+  font-size: 13px; /* slightly larger for readability */
+  line-height: 1.08;
   cursor: pointer;
 }
 .tos-menu__item:hover { background: rgba(203, 213, 225, 0.6); }
