@@ -136,21 +136,22 @@
 .tos-menu {
   position: fixed;
   z-index: 2147483647;
-  min-width: 140px;
+  min-width: 104px;
   background: rgba(248, 250, 252, 0.98);
   color: #0f172a;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 10px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-  padding: 6px;
-  backdrop-filter: blur(6px);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+  padding: 4px;
+  backdrop-filter: blur(4px);
 }
 .tos-menu__item {
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.15;
   cursor: pointer;
 }
-.tos-menu__item:hover { background: rgba(203, 213, 225, 0.5); }
+.tos-menu__item:hover { background: rgba(203, 213, 225, 0.6); }
 .tos-bubble.tos-dark ~ .tos-menu { background: rgba(30, 41, 59, 0.98); color: #e2e8f0; border-color: rgba(71,85,105,0.6); }
-.tos-bubble.tos-dark ~ .tos-menu .tos-menu__item:hover { background: rgba(51,65,85,0.6); }
+.tos-bubble.tos-dark ~ .tos-menu .tos-menu__item:hover { background: rgba(51,65,85,0.7); }
