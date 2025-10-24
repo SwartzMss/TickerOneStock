@@ -7,7 +7,9 @@
     "storage",
     "tabs",
     "alarms",
-    "downloads"
+    "downloads",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://qt.gtimg.cn/*",
@@ -17,6 +19,15 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "em-cors-rules",
+        "enabled": true,
+        "path": "dnr_rules.json"
+      }
+    ]
   },
   "action": {
     "default_title": "TickerOneStock"
