@@ -128,7 +128,9 @@ async function handleSubmit(event) {
     // Save normalized symbol + optional symbolName for fast display
     const bubbleWidth = Number(form.bubbleWidth.value) || DEFAULT_CONFIG.bubbleSize.width;
     await storageSet('sync', { symbol: normalized, symbolName: resolvedName, bubbleSize: { width: bubbleWidth } });
-    showStatus('已保存，后台将在下个周期使用新配置刷新。');
+    // 主动触发一次刷新，避免等待轮询或需手动刷新页面
+    try { if (hasChrome) chrome.runtime.sendMessage({ type: 'REQUEST_REFRESH' }, () => {}); } catch (_) {}
+    showStatus('已保存，已触发刷新。');
     return;
   } catch (e) {
     showStatus('无法识别该标的，请更换关键词', 'error');
