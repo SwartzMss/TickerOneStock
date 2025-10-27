@@ -29,6 +29,14 @@
           <p class="field__hint">后台每天 06:00 会自动尝试从东方财富 push2 拉取全量列表，并缓存到本地（仅扩展本机）。</p>
         </section>
         <section class="field">
+          <label>行情源连通性</label>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="btn-test-connectivity" class="btn">🔌 连通性测试</button>
+            <small id="connectivity-status" class="muted status-indicator" data-status="unknown">未测试</small>
+          </div>
+          <p class="field__hint">测试当前标的在腾讯/新浪两条路线的可用性与返回值，便于排查差异。</p>
+        </section>
+        <section class="field">
           <label for="bubbleWidth">气泡大小（直径 px）</label>
           <input id="bubbleWidth" name="bubbleWidth" type="number" min="60" max="480" step="10" />
           <p class="field__hint">圆形气泡仅使用宽度作为直径，高度将自动等于宽度。</p>

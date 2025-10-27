@@ -15,6 +15,8 @@ const searchResults = document.getElementById('search-results');
 const btnRefreshEastmoney = document.getElementById('btn-refresh-eastmoney');
 const eastmoneyStatusEl = document.getElementById('eastmoney-status');
 const btnExportIndex = document.getElementById('btn-export-index');
+const btnTestConnectivity = document.getElementById('btn-test-connectivity');
+const connectivityStatusEl = document.getElementById('connectivity-status');
 const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage;
 const DEBUG = true;
 
@@ -91,6 +93,12 @@ async function loadConfig() {
       btnExportIndex.disabled = !(status === 'success' && cnt > 0);
       btnExportIndex.title = btnExportIndex.disabled ? '需先成功获取一次全量索引' : '';
     }
+  }
+  // connectivity status reset when loading config/symbol
+  if (connectivityStatusEl) {
+    connectivityStatusEl.textContent = '未测试';
+    connectivityStatusEl.dataset.status = 'unknown';
+    connectivityStatusEl.style.color = '';
   }
 }
 
@@ -354,6 +362,53 @@ btnExportIndex?.addEventListener('click', async () => {
     showStatus('导出失败，请检查下载权限', 'error');
   } finally {
     URL.revokeObjectURL(url);
+  }
+});
+// Connectivity test for quote providers
+btnTestConnectivity?.addEventListener('click', async () => {
+  if (!hasChrome) { showStatus('仅在扩展环境中可用', 'error'); return; }
+  const raw = form.symbol.value.trim();
+  if (!raw) { showStatus('请先选择/输入标的', 'error'); return; }
+  // Normalize symbol to sh/sz+code
+  let sym;
+  try {
+    sym = (await ensureNormalizedBeforeSave()).symbol;
+  } catch (_) {
+    showStatus('无法识别该标的，请更换关键词', 'error');
+    return;
+  }
+  btnTestConnectivity.disabled = true;
+  btnTestConnectivity.classList.add('is-loading');
+  btnTestConnectivity.setAttribute('aria-busy', 'true');
+  btnTestConnectivity.textContent = '测试中…';
+  connectivityStatusEl.textContent = '测试中…';
+  connectivityStatusEl.dataset.status = 'pending';
+  try {
+    const res = await new Promise((resolve) => chrome.runtime.sendMessage({ type: 'TEST_CONNECTIVITY', payload: { symbol: sym } }, resolve));
+    if (!res || !res.ok) {
+      connectivityStatusEl.textContent = '测试失败';
+      connectivityStatusEl.dataset.status = 'fail';
+      showStatus('连通性测试失败', 'error');
+      return;
+    }
+    const { tencent, sina } = res;
+    const mk = (r) => r.ok ? `${r.provider} ✓ (${r.ms}ms ${Number.isFinite(r.price)?'价'+r.price:''})` : `${r.provider} ✗`;
+    connectivityStatusEl.textContent = [mk(tencent), mk(sina)].join(' | ');
+    connectivityStatusEl.dataset.status = (tencent.ok || sina.ok) ? 'success' : 'fail';
+    if (res.diff && res.diff.changed) {
+      showStatus('两路线价格有差异，请留意');
+    } else {
+      showStatus('连通性测试完成');
+    }
+  } catch (e) {
+    connectivityStatusEl.textContent = '测试异常';
+    connectivityStatusEl.dataset.status = 'fail';
+    showStatus('测试异常，请重试', 'error');
+  } finally {
+    btnTestConnectivity.disabled = false;
+    btnTestConnectivity.classList.remove('is-loading');
+    btnTestConnectivity.removeAttribute('aria-busy');
+    btnTestConnectivity.textContent = '连通性测试';
   }
 });
 // Manual refresh via Eastmoney

@@ -281,6 +281,55 @@ async function fetchQuote() {
   }
 }
 
+// Probe both providers and return connectivity + parsed quotes for comparison
+async function testConnectivityForSymbol(symbol) {
+  const controllerFactory = () => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    return { c, t };
+  };
+  async function tryProvider(provider) {
+    const { c, t } = controllerFactory();
+    const start = Date.now();
+    try {
+      if (provider === 'sina') {
+        const url = `https://hq.sinajs.cn/list=${symbol}`;
+        const response = await fetch(url, { cache: 'no-store', signal: c.signal, headers: { 'Content-Type': 'text/plain; charset=gbk' } });
+        if (!response.ok) throw new Error(`Sina HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        let decoder;
+        try { decoder = new TextDecoder('gbk'); } catch (_) { try { decoder = new TextDecoder('gb18030'); } catch (_) { decoder = new TextDecoder(); } }
+        const text = decoder.decode(buffer);
+        const q = parseSinaQuote(symbol, text);
+        const ms = Date.now() - start;
+        return { ok: true, provider: 'sina', ms, price: q.price, quote: computeQuoteMetrics(q) };
+      } else {
+        const url = `https://qt.gtimg.cn/q=${symbol}`;
+        const response = await fetch(url, { cache: 'no-store', signal: c.signal });
+        if (!response.ok) throw new Error(`Tencent HTTP ${response.status}`);
+        const text = await response.text();
+        const q = parseTencentQuote(symbol, text);
+        const ms = Date.now() - start;
+        return { ok: true, provider: 'tencent', ms, price: q.price, quote: computeQuoteMetrics(q) };
+      }
+    } catch (e) {
+      const ms = Date.now() - start;
+      return { ok: false, provider, ms, error: String(e?.message || e) };
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  const [tencent, sina] = await Promise.all([tryProvider('tencent'), tryProvider('sina')]);
+  let diff = { changed: false };
+  if (tencent.ok && sina.ok) {
+    const p1 = tencent.price;
+    const p2 = sina.price;
+    const changed = Number.isFinite(p1) && Number.isFinite(p2) && Math.abs(p1 - p2) > 1e-6;
+    diff = { changed, delta: changed ? (p1 - p2) : 0 };
+  }
+  return { ok: true, tencent, sina, diff };
+}
+
 async function fetchAndBroadcast() {
   try {
     const quote = await fetchQuote();
@@ -510,6 +559,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return;
   if (message.type === 'REFRESH_STOCK_INDEX') {
     refreshIndexFromEastmoneyWithRetry(3).then((res) => sendResponse(res)).catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true;
+  }
+  if (message.type === 'TEST_CONNECTIVITY') {
+    const sym = message && message.payload && message.payload.symbol;
+    if (!sym || !/^(sh|sz)\d{6}$/i.test(sym)) {
+      sendResponse({ ok: false, error: 'invalid-symbol' });
+      return false;
+    }
+    testConnectivityForSymbol(sym)
+      .then((res) => sendResponse(res))
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
     return true;
   }
 });
